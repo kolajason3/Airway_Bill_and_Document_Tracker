@@ -19,6 +19,7 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
   const [alertTemplate, setAlertTemplate] = useState('rejection');
   const [whatsappLogs, setWhatsappLogs] = useState([]);
   const [customMsg, setCustomMsg] = useState('');
+  const [whatsappPhone, setWhatsappPhone] = useState('');
 
   const isAdmin = activePortal === 'admin';
   const isAssigned = shipment 
@@ -66,6 +67,9 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
       }
 
       setShipment(data);
+      if (data && data.customer && data.customer.phone) {
+        setWhatsappPhone(data.customer.phone);
+      }
 
       // Load WhatsApp logs from local storage
       const localLogs = JSON.parse(localStorage.getItem('sb_whatsapp_logs') || '[]');
@@ -348,12 +352,12 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
   };
 
   const handleDispatchWhatsApp = () => {
-    if (!shipment || !shipment.customer || !shipment.customer.phone) {
-      alert('Linked customer must have a phone number registered to send WhatsApp alerts.');
+    if (!whatsappPhone.trim()) {
+      alert('Please enter a recipient phone number.');
       return;
     }
 
-    const phone = shipment.customer.phone.replace(/[^0-9]/g, '');
+    const phone = whatsappPhone.replace(/[^0-9]/g, '');
     const text = encodeURIComponent(customMsg);
     const waUrl = `https://wa.me/${phone}?text=${text}`;
 
@@ -362,8 +366,8 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
     const newLog = {
       id: `wa-log-${Date.now()}`,
       shipment_id: shipmentId,
-      customer_name: shipment.customer.company_name,
-      recipient_phone: shipment.customer.phone,
+      customer_name: shipment?.customer?.company_name || 'Walk-in Exporter',
+      recipient_phone: whatsappPhone,
       template_used: alertTemplate,
       message_content: customMsg,
       timestamp: new Date().toISOString()
@@ -577,8 +581,19 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
 
               <div className="space-y-3.5 text-xs">
                 <div className="space-y-1">
-                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Customer Phone</span>
-                  <p className="text-white font-bold">{shipment.customer?.company_name || 'Walk-in Exporter'} ({shipment.customer?.phone || 'No phone registered'})</p>
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Customer Company</span>
+                  <p className="text-white font-semibold">{shipment.customer?.company_name || 'Walk-in Exporter'}</p>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Recipient Phone Number *</label>
+                  <input 
+                    type="text"
+                    placeholder="e.g. +91 98765 43210"
+                    value={whatsappPhone}
+                    onChange={(e) => setWhatsappPhone(e.target.value)}
+                    className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-3 py-2 text-white outline-none focus:border-accent-blue"
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -610,7 +625,7 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
                 <button
                   type="button"
                   onClick={handleDispatchWhatsApp}
-                  disabled={!shipment.customer?.phone}
+                  disabled={!whatsappPhone.trim()}
                   className="w-full bg-[#25d366] hover:bg-[#20ba5a] text-black font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
                 >
                   <Send size={14} /> Send WhatsApp Alert
