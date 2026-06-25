@@ -1,22 +1,27 @@
-# Bug Report & Known Limitations
+# QA Bug Report & System Limitations
 
-## Issues Found & Resolved During Implementation
+This document lists bugs resolved during final development and validation checks, along with prototype configurations and platform scope boundaries.
 
-1. **Vite dev server restart issue**: 
-   - *Symptom*: When environment configuration (.env) is renamed or modified, Vite restarts. Playwright was hitting ERR_CONNECTION_REFUSED during startup.
-   - *Resolution*: Set appropriate startup delay in test script execution to ensure Vite has fully booted before navigating.
-2. **Mock Client `maybeSingle` function crash**:
-   - *Symptom*: Public tracking search in `PortalGateway.jsx` invoked `.maybeSingle()` which crashed when using the Mock Database client.
-   - *Resolution*: Implemented `maybeSingle` on the Mock client builders inside [supabase.js](file:///c:/Users/john/Downloads/New%20Project/frontend/src/services/supabase.js).
-3. **Session persistence bypass**:
-   - *Symptom*: E2E tests got stuck on logged-in views when reloading page.
-   - *Resolution*: Added `sessionStorage.clear()` inside test validation routines to ensure logout transitions operate correctly.
+---
 
-## Prototype Limitations & Operational Scope
+## 1. Resolved Issues
 
-1. **Row Level Security (RLS) policies**:
-   - All tables (`customers`, `shipments`, `shipment_documents`, `status_history`, `alerts`) are fully configured with RLS `USING (true) WITH CHECK (true)` for prototype testing convenience. In production, these should restrict access based on user role authentication.
+| Component | Description | Resolution |
+| --- | --- | --- |
+| **supabase.js (Mock)** | `TypeError: maybeSingle is not a function` during search query fallback. | Implemented the `maybeSingle()` query resolver inside all mock query builder return points. |
+| **test_client_email.js** | Public search checking card was not accessible due to initial Gateway card collapse. | Updated the browser automation script to click the `'Exporter / Customer Tracking'` card first. |
+| **test_client_email.js** | Browser session persistence kept operators logged in, bypassing tracking gateway. | Added a `sessionStorage.clear()` instruction to force logout between client lookup transitions. |
+| **ShipmentDetail.jsx** | File reference paths had hardcoded references matching legacy `document-vault` naming. | Standardized storage bucket handling to `shipment-documents` with 60-second expiration. |
+
+---
+
+## 2. System Limitations & Assumptions
+
+1. **Row Level Security (RLS) Policies**:
+   - The RLS policies implemented on the PostgreSQL database (`0004_rls_policies.sql`) are configured with `USING (true) WITH CHECK (true)`. This leaves rows open to unrestricted read/write operations by any user with a public anon key, which is optimal for rapid testing and demonstrations but should be secured (bound to auth user IDs) prior to production deployment.
+
 2. **Resend Free Sandbox**:
-   - Resend operates in sandbox mode unless custom domains are verified. Consequently, real inbox delivery is limited only to the registered developer email address (others will return `SENT` from the API, but actual inbox routing is suppressed).
-3. **Mock Storage URLs**:
-   - In local mock mode, storage returns static pre-signed paths, while in real mode it requests authentic signed URLs from the Supabase client.
+   - Without domain verification on resend.com, the Resend mail API will only successfully deliver emails to the single owner/developer account that signed up for the key. Other recipient addresses will mock a valid `SENT` callback in the `notification_log` but will be dropped by Resend's security sandbox. This is a Resend API level limitation, not a software bug.
+
+3. **Private Storage signed URLs**:
+   - The `shipment-documents` private bucket signed URLs are set to expire in 60 seconds. This meets the master security spec, meaning links opened in a new tab will fail to render if they are reloaded after 1 minute.

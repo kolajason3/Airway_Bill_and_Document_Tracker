@@ -47,13 +47,15 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
         const docsWithSignedUrls = await Promise.all(data.shipment_documents.map(async (doc) => {
           if (doc.file_reference) {
             let path = doc.file_reference;
-            if (path.includes('document-vault/')) {
+            if (path.includes('shipment-documents/')) {
+              path = path.split('shipment-documents/')[1];
+            } else if (path.includes('document-vault/')) {
               path = path.split('document-vault/')[1];
             }
             try {
               const { data: signedData, error: signedErr } = await supabase.storage
-                .from('document-vault')
-                .createSignedUrl(path, 3600); // 1 hour expiration
+                .from('shipment-documents')
+                .createSignedUrl(path, 60); // 60 seconds expiration
               
               if (!signedErr && signedData) {
                 return { ...doc, signedViewUrl: signedData.signedUrl };
@@ -140,18 +142,17 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
       setActionSuccess('');
       setUploadingDocId(docId);
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${shipment.awb_number}/${docType}_${Date.now()}.${fileExt}`;
+      const fileName = `${shipment.id}/${docType}.pdf`;
 
       // Upload file to Supabase Storage bucket
       const { error: uploadErr } = await supabase.storage
-        .from('document-vault')
-        .upload(fileName, file);
+        .from('shipment-documents')
+        .upload(fileName, file, { upsert: true });
 
       if (uploadErr) throw uploadErr;
 
       // Get public URL
-      const publicUrl = supabase.storage.from('document-vault').getPublicUrl(fileName).data.publicUrl;
+      const publicUrl = supabase.storage.from('shipment-documents').getPublicUrl(fileName).data.publicUrl;
 
       // Update document table
       const { error: dbErr } = await supabase
@@ -844,44 +845,42 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
             </div>
           )}
 
-          {/* Email Notifications Dispatch Trail */}
+          {/* Email Notifications Panel */}
           <div className="bg-bg-card border border-[#222f47] rounded-2xl p-6">
             <h2 className="text-xs font-header font-bold text-text-muted flex items-center gap-2 mb-4 border-b border-[#222f47] pb-3 uppercase tracking-wider">
               <Mail className="text-accent-blue" size={14} /> Email Dispatch Trail
             </h2>
-            <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-[250px] overflow-y-auto pr-1">
               {!shipment.notification_log || shipment.notification_log.length === 0 ? (
-                <p className="text-xs text-text-muted text-center py-4">No emails dispatched for this consignment.</p>
+                <div className="text-xs text-text-muted text-center py-4">No email alerts sent yet.</div>
               ) : (
                 shipment.notification_log
                   .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-                  .map((log) => {
-                    const statusColors = 
-                      log.send_status === 'SENT' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                      log.send_status === 'FAILED' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                      log.send_status === 'SIMULATED' ? 'bg-gray-500/10 text-gray-400 border border-gray-500/20' :
-                      'bg-amber-500/10 text-amber-400 border border-amber-500/20'; // SKIPPED_NO_EMAIL
-                    
-                    return (
-                      <div key={log.id} className="bg-[#0b0f19] border border-[#222f47] p-3.5 rounded-xl text-xs space-y-1.5 animate-fade-in">
-                        <div className="flex justify-between items-start">
-                          <span className="font-bold text-white text-[11px] max-w-[70%] truncate block">{log.subject}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider border ${statusColors}`}>
-                            {log.send_status}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center text-[9px] text-text-muted uppercase font-bold tracking-wider">
-                          <span>To: {log.recipient_email || 'N/A'}</span>
-                          <span>{new Date(log.created_at).toLocaleString()}</span>
-                        </div>
-                        {log.error_message && (
-                          <div className="p-2 bg-red-500/5 border border-red-500/10 rounded-lg text-[10px] text-red-400/90 font-mono break-words">
-                            Error: {log.error_message}
-                          </div>
-                        )}
+                  .map((log) => (
+                    <div key={log.id} className="bg-[#0b0f19] border border-[#222f47] p-3 rounded-xl text-xs space-y-1.5 animate-fade-in">
+                      <div className="flex justify-between items-center text-[8px] font-bold text-text-muted uppercase tracking-wider">
+                        <span>Channel: {log.channel}</span>
+                        <span>{new Date(log.created_at).toLocaleString()}</span>
                       </div>
-                    );
-                  })
+                      <div className="flex justify-between items-start gap-2">
+                        <p className="text-white font-medium text-[11px] leading-tight">{log.subject}</p>
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-bold flex-shrink-0 uppercase ${
+                          log.send_status === 'SENT' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                          log.send_status === 'FAILED' ? 'bg-red-500/10 text-red-400 border border-red-500/20 animate-pulse' :
+                          log.send_status === 'SKIPPED_NO_EMAIL' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                          'bg-gray-500/10 text-gray-400 border border-gray-500/20'
+                        }`}>
+                          {log.send_status}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-text-muted">Recipient: <strong className="text-white font-medium">{log.recipient_email || 'N/A'}</strong></p>
+                      {log.error_message && (
+                        <div className="bg-red-500/5 border border-red-500/10 rounded-lg p-2 text-[9px] text-red-400 font-mono break-all leading-relaxed">
+                          Error: {log.error_message}
+                        </div>
+                      )}
+                    </div>
+                  ))
               )}
             </div>
           </div>

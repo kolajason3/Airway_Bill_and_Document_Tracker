@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       holdReason = rejected?.rejection_reason ?? null
     }
 
-    const recipientEmail = shipment.client_email ?? shipment.customers?.email ?? null
+    const recipientEmail = shipment.customers?.email ?? null
     const buildTemplate = TEMPLATES[shipment.status] ?? TEMPLATES.PENDING_DOCUMENTS
     const { subject, html } = buildTemplate({
       ...shipment,

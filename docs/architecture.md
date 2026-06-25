@@ -1,51 +1,53 @@
 # System Architecture
 
-The ORBEM Solutions Airway Bill & Document Tracker is built as a modern serverless application utilizing a headless backend structure.
+The **Airway Bill & Document Tracker (AWB-DT)** uses a serverless cloud architecture leveraging React, Supabase, and Resend.
+
+## Architecture Diagram
 
 ```mermaid
 graph TD
-    subgraph Frontend Client
-        React[Vite React Application]
-        Tailwind[Tailwind Styling]
+    subgraph Frontend [React Application]
+        UI[React UI Component Layer]
+        Router[React Router]
+        SClient[Supabase JS Client SDK]
     end
 
-    subgraph Supabase Cloud Platform
-        Auth[Supabase Auth Service]
-        Database[(Postgres Database)]
+    subgraph Supabase [Supabase Cloud Backend]
+        Auth[Supabase Auth / Session]
+        DB[(PostgreSQL Database)]
         Storage[Storage Buckets]
-        EdgeFunc[Edge Functions Deno]
+        EdgeFunc[Deno Edge Functions]
     end
 
-    subgraph External Services
-        Resend[Resend Email Delivery]
+    subgraph External [External Services]
+        Resend[Resend Email API]
+        Inboxes[Customer Email Inboxes]
     end
 
-    %% Frontend Interactions
-    React <-->|Direct JS Client Query| Database
-    React <-->|Sign URL & Object Upload| Storage
-    
-    %% Backend Business Logic
-    Database -->|Postgres Weight/Doc Triggers| Database
-    Database -->|pg_net HTTP Call on status change| EdgeFunc
-    
-    %% External Notification flow
-    EdgeFunc -->|Query Customer & Rejection Details| Database
-    EdgeFunc -->|Secure API request using Secret| Resend
-    Resend -->|SMTP Routing| ClientInbox[Client Email Inbox]
-    EdgeFunc -->|Logs success/failure status| Database
+    UI --> Router
+    UI --> SClient
+    SClient -->|Read/Write Tables| DB
+    SClient -->|Upload Documents| Storage
+    SClient -->|Sign-in / Role Auth| Auth
+
+    DB -->|Trigger HTTP Hook| EdgeFunc
+    EdgeFunc -->|Query Shipment Data| DB
+    EdgeFunc -->|POST Email JSON| Resend
+    Resend -->|SMTP Dispatch| Inboxes
+    EdgeFunc -->|Write Audit Log| DB
 ```
 
-## System Breakdown
+## Component Breakdown
 
-### 1. Presentation Layer (Vite + React)
-- **Direct Queries**: Connects directly to the PostgreSQL database via `@supabase/supabase-js` web client, querying views like `shipments_with_summary` and `dashboard_summary`.
-- **Storage Management**: Handles secure binary uploads (Compliance documents like ID proofs, Invoices) directly to Supabase storage buckets and fetches temporary pre-signed 60-second read URLs.
+1. **Vite + React (Frontend)**:
+   - Built using React JSX and Tailwind CSS.
+   - Leverages a configuration-free **Local Storage Mock Adapter** (in `services/supabase.js`) to emulate all database tables, storage uploading, status transitions, and email notifications in sandbox environments without credentials.
+   - Directly connects to Supabase client SDK when `.env` parameters are present.
 
-### 2. Business Logic & Persistence Layer (PostgreSQL)
-- **Automatic Weight Recalculation**: Triggers evaluate volumetric weight as `(Length * Width * Height) / 6000` and locks chargeable weight.
-- **Auto Status Synchronization**: Analyzes the approval/rejection state of the 5 required checklist documents and automatically transitions shipment status between `PENDING_DOCUMENTS`, `ON_HOLD`, and `READY_FOR_HANDOVER`.
-- **Status Change Hooks**: Changes in status fire webhook triggers (using `pg_net`) to alert external listeners.
+2. **Supabase Cloud Backend**:
+   - **PostgreSQL Database**: Holds tables for `customers`, `shipments`, `shipment_documents`, `status_history`, `alerts`, and `notification_log`. Automatically manages status transitions and volumetric weights via SQL database triggers.
+   - **Storage Buckets**: Stores PDF/image compliance documents under private `shipment-documents` bucket pathing conventions (`{shipment_id}/{document_type}.pdf`).
+   - **Deno Edge Functions**: Host Deno runtime functions like `send-status-email` to query the DB and dispatch alerts safely.
 
-### 3. Edge Alerting Layer (Supabase Edge Functions + Resend)
-- **Edge Functions**: Light-weight TypeScript serverless execution environments running on Deno. They are secured with a server-side secret API key.
-- **Resend integration**: Sends HTML-formatted operational updates to client and customer emails immediately after database triggers initiate a request.
+3. **Resend Email Service**:
+   - Integrated via REST API to handle fast email deliveries to shippers and customers using custom templates.

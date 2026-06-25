@@ -1,6 +1,6 @@
 # Entity-Relationship Diagram
 
-This diagram displays the relational schema for the ORBEM Solutions Airway Bill & Document Tracker.
+This diagram displays the database tables, attributes, primary/foreign keys, and cardinalities in the Supabase PostgreSQL database.
 
 ```mermaid
 erDiagram
@@ -18,7 +18,7 @@ erDiagram
         uuid id PK
         uuid customer_id FK
         varchar client_email
-        varchar awb_number UK
+        varchar awb_number
         varchar origin_airport
         varchar destination_airport
         varchar pickup_city
@@ -81,9 +81,9 @@ erDiagram
         timestamp created_at
     }
 
-    customers ||--o{ shipments : "places"
+    customers ||--o{ shipments : "linked to"
     shipments ||--|{ shipment_documents : "requires"
     shipments ||--o{ status_history : "tracks"
     shipments ||--o{ alerts : "triggers"
-    shipments ||--o{ notification_log : "records"
+    shipments ||--o{ notification_log : "logs"
 ```

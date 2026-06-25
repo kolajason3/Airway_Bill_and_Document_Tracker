@@ -1,51 +1,46 @@
 # Use Case Diagram
 
-This use case diagram models the operational actions of each user role in the ORBEM Solutions Airway Bill & Document Tracker.
+This use case diagram details the interactions between the system actors (Customer/Exporter, Documentation Executive/Employee, Operations Administrator) and the platform functionalities.
 
 ```mermaid
 graph LR
-    %% Actors
-    Customer[Customer / Exporter]
-    DocExecutive[Documentation Executive]
-    OpsAdmin[Operations Administrator]
+    Customer((Customer / Exporter))
+    Employee((Documentation Executive))
+    Admin((Operations Administrator))
 
-    %% Use Cases
-    subgraph Use Cases
-        UC1(Track AWB Compliance Status)
-        UC2(Intake New Airway Bill)
+    subgraph Platform [AWB & Document Tracker Boundary]
+        UC1(Track AWB Status)
+        UC2(Intake New Shipment)
         UC3(Upload Compliance Documents)
-        UC4(Approve / Reject Documents)
-        UC5(Dispatch Operational Status Alerts)
-        UC6(Mark Shipment Completed / Cancelled)
-        UC7(Assign Shipment to Operators)
+        UC4(View Uploaded PDFs)
+        UC5(Approve Document checklist)
+        UC6(Reject Document with Reason)
+        UC7(Override Shipment Parameters)
+        UC8(View Dispatch Alerts Logs)
+        UC9(Mark Shipment Completed / Cancelled)
+        UC10(View Global Audit Logs)
+        UC11(Register New Operator Account)
     end
 
-    %% Relations
     Customer --> UC1
     Customer --> UC3
 
-    DocExecutive --> UC2
-    DocExecutive --> UC3
-    DocExecutive --> UC4
-    DocExecutive --> UC5
+    Employee --> UC2
+    Employee --> UC3
+    Employee --> UC4
+    Employee --> UC5
+    Employee --> UC6
+    Employee --> UC8
+    Employee --> UC11
 
-    OpsAdmin --> UC2
-    OpsAdmin --> UC4
-    OpsAdmin --> UC6
-    OpsAdmin --> UC7
-    OpsAdmin --> UC5
+    Admin --> UC2
+    Admin --> UC3
+    Admin --> UC4
+    Admin --> UC5
+    Admin --> UC6
+    Admin --> UC7
+    Admin --> UC8
+    Admin --> UC9
+    Admin --> UC10
+    Admin --> UC11
 ```
-
-## Actor Definitions
-
-### 1. Customer / Walk-in Exporter
-- **Track Status**: Enters AWB number to check document checklist and audit completion rate in real-time.
-- **Upload Documents**: Uploads missing ID proof, packing lists, invoices, and declarations if requested by the documentation team.
-
-### 2. Documentation Executive (Employee)
-- **Shipment Intake**: Enters dimensions, weights, pickup locations, and client contact email details.
-- **Auditing**: Performs document checklist reviews, approving matching paperwork or rejecting incorrect files with a required explanation.
-- **Alerting**: Dispatches manual alerts or reviews automated logs.
-
-### 3. Operations Administrator (Admin)
-- **System Control**: Has administrative override control to change status transitions, assign tasks to executives, cancel shipments, or mark consignments as completed.
