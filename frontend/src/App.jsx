@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, Link, useNavigate, useLocation } from 'react-router-dom';
-import { PlaneTakeoff, LayoutDashboard, FileText, ShieldAlert, LogOut, Shield, User } from 'lucide-react';
+import { PlaneTakeoff, LayoutDashboard, FileText, ShieldAlert, LogOut, Shield, User, Menu, X } from 'lucide-react';
 import PortalGateway from './components/PortalGateway';
 import Dashboard from './components/Dashboard';
 import ShipmentForm from './components/ShipmentForm';
@@ -11,6 +11,11 @@ import { supabase } from './services/supabase';
 function Layout({ activePortal, activeUser, onLogout, children }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
   const getHeaderTitle = () => {
     const path = location.pathname;
@@ -33,9 +38,30 @@ function Layout({ activePortal, activeUser, onLogout, children }) {
   return (
     <div className="flex h-screen bg-[#0b0f19] text-white font-body overflow-hidden">
       
+      {/* Sidebar Backdrop Overlay on Mobile */}
+      {sidebarOpen && (
+        <div 
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden transition-opacity duration-300"
+        />
+      )}
+
       {/* Sidebar Navigation */}
-      <aside className="w-64 bg-[#151d30] border-r border-[#222f47] flex flex-col p-6 flex-shrink-0">
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-[#151d30] border-r border-[#222f47] flex flex-col p-6 flex-shrink-0
+        transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
         
+        {/* Close Button on mobile */}
+        <button 
+          onClick={() => setSidebarOpen(false)}
+          className="absolute top-4 right-4 text-text-muted hover:text-white p-2 lg:hidden"
+          title="Close menu"
+        >
+          <X size={18} />
+        </button>
+
         {/* Company Branding */}
         <div className="flex items-center gap-3 mb-8 select-none">
           <div className="w-10 h-10 rounded-xl bg-accent-blue/15 text-accent-blue flex items-center justify-center border border-accent-blue/20">
@@ -109,11 +135,21 @@ function Layout({ activePortal, activeUser, onLogout, children }) {
       <div className="flex-1 flex flex-col overflow-hidden">
         
         {/* Header Bar */}
-        <header className="h-[76px] border-b border-[#222f47] flex items-center justify-between px-8 flex-shrink-0 font-body">
-          <h2 className="text-lg font-header font-bold text-white tracking-wide">{getHeaderTitle()}</h2>
+        <header className="h-[76px] border-b border-[#222f47] flex items-center justify-between px-4 sm:px-8 flex-shrink-0 font-body">
+          <div className="flex items-center gap-2 select-none overflow-hidden mr-2">
+            {/* Mobile Menu Toggle */}
+            <button 
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden text-text-muted hover:text-white p-2 -ml-2 transition-colors flex-shrink-0"
+              title="Open menu"
+            >
+              <Menu size={22} />
+            </button>
+            <h2 className="text-sm sm:text-base md:text-lg font-header font-bold text-white tracking-wide truncate">{getHeaderTitle()}</h2>
+          </div>
           
-          <div className="flex items-center gap-6 text-sm">
-            <div className="flex items-center gap-2 select-none">
+          <div className="flex items-center gap-3 sm:gap-6 text-sm flex-shrink-0">
+            <div className="hidden sm:flex items-center gap-2 select-none">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -123,7 +159,7 @@ function Layout({ activePortal, activeUser, onLogout, children }) {
               </span>
             </div>
 
-            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${activePortal === 'admin' ? 'bg-accent-blue/10 text-accent-blue border border-accent-blue/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-bold ${activePortal === 'admin' ? 'bg-accent-blue/10 text-accent-blue border border-accent-blue/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${activePortal === 'admin' ? 'bg-accent-blue' : 'bg-emerald-500'}`}></span>
               {activePortal === 'admin' ? 'Master Access' : 'Operations Portal'}
             </div>
@@ -131,7 +167,7 @@ function Layout({ activePortal, activeUser, onLogout, children }) {
         </header>
 
         {/* Content View Body */}
-        <main className="flex-1 overflow-y-auto p-8 bg-[#0b0f19]">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#0b0f19]">
           <div className="max-w-[1400px] mx-auto">
             {children}
           </div>

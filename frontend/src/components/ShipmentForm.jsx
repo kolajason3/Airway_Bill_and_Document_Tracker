@@ -462,7 +462,7 @@ export default function ShipmentForm({ activePortal, activeUser }) {
                 <h4 className="text-xs font-bold uppercase tracking-wider text-accent-blue flex items-center gap-1.5 border-b border-[#222f47]/50 pb-2">
                   Package Volumetric Dimensions (Mandatory)
                 </h4>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-1">
                     <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Length (cm) *</span>
                     <input 
@@ -616,18 +616,18 @@ export default function ShipmentForm({ activePortal, activeUser }) {
           </div>
 
           {/* Action Row */}
-          <div className="flex justify-end gap-3 border-t border-[#222f47] pt-6">
+          <div className="flex flex-col sm:flex-row justify-end gap-3 border-t border-[#222f47] pt-6">
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="bg-transparent hover:bg-white/[0.02] border border-[#222f47] text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-150"
+              className="w-full sm:w-auto text-center bg-transparent hover:bg-white/[0.02] border border-[#222f47] text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-150"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="bg-accent-blue hover:bg-accent-blue-hover text-white px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors duration-150 disabled:opacity-50 shadow-lg shadow-accent-blue/15"
+              className="w-full sm:w-auto justify-center bg-accent-blue hover:bg-accent-blue-hover text-white px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors duration-150 disabled:opacity-50 shadow-lg shadow-accent-blue/15"
             >
               {loading ? (
                 <>

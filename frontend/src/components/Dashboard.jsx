@@ -219,7 +219,7 @@ export default function Dashboard({ activePortal, activeUser }) {
     <div className="space-y-6">
       
       {/* Analytics Summary Card Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-bg-card border border-border-color rounded-2xl p-5 flex items-center gap-5 hover:border-accent-blue/30 transition-all duration-300">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-accent-blue/10 text-accent-blue border border-accent-blue/20">
             <Package size={22} />
@@ -294,8 +294,8 @@ export default function Dashboard({ activePortal, activeUser }) {
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="relative md:col-span-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="relative sm:col-span-2 lg:col-span-2">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
             <input 
               type="text" 
@@ -321,7 +321,7 @@ export default function Dashboard({ activePortal, activeUser }) {
             </select>
           </div>
 
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
@@ -345,7 +345,7 @@ export default function Dashboard({ activePortal, activeUser }) {
         </div>
 
         {/* Table List */}
-        <div className="overflow-x-auto">
+        <div className="w-full">
           {loading ? (
             <div className="text-center py-12 text-text-muted">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-blue mx-auto mb-3"></div>
@@ -358,39 +358,103 @@ export default function Dashboard({ activePortal, activeUser }) {
               <p className="text-xs mt-1">Try resetting the filters or register a new shipment profile.</p>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-[#222f47] text-text-muted text-xs font-bold uppercase tracking-wider">
-                  <th className="pb-3 pl-4">AWB Number</th>
-                  <th className="pb-3">Customer</th>
-                  <th className="pb-3">Route</th>
-                  <th className="pb-3">Chargeable Weight</th>
-                  <th className="pb-3">Status</th>
-                  <th className="pb-3">Missing Paperwork</th>
-                  <th className="pb-3">Owner</th>
-                  <th className="pb-3 pr-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#222f47]/50 text-sm">
-                {filteredShipments.map((s) => {
-                  return (
-                    <tr key={s.id} className="hover:bg-white/[0.01] transition-colors duration-150">
-                      <td className="py-4 pl-4 font-header font-bold tracking-wide text-white">
-                        <span className="flex items-center gap-1.5">
+            <div className="space-y-4">
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#222f47] text-text-muted text-xs font-bold uppercase tracking-wider">
+                      <th className="pb-3 pl-4">AWB Number</th>
+                      <th className="pb-3">Customer</th>
+                      <th className="pb-3">Route</th>
+                      <th className="pb-3">Chargeable Weight</th>
+                      <th className="pb-3">Status</th>
+                      <th className="pb-3">Missing Paperwork</th>
+                      <th className="pb-3">Owner</th>
+                      <th className="pb-3 pr-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#222f47]/50 text-sm">
+                    {filteredShipments.map((s) => (
+                      <tr key={s.id} className="hover:bg-white/[0.01] transition-colors duration-150">
+                        <td className="py-4 pl-4 font-header font-bold tracking-wide text-white">
+                          <span className="flex items-center gap-1.5">
+                            {s.priority_flag && <span className="w-1.5 h-1.5 bg-red-500 rounded-full" title="Priority Shipment"></span>}
+                            {s.awb_number}
+                          </span>
+                        </td>
+                        <td className="py-4 text-text-muted font-medium">
+                          <div>
+                            <p className="text-white font-semibold">{s.customer_name || 'Guest Exporter'}</p>
+                            <p className="text-[10px] text-text-muted mt-0.5">{s.customer_type || 'N/A'}</p>
+                          </div>
+                        </td>
+                        <td className="py-4 font-semibold text-text-muted uppercase">{s.origin_airport} &rarr; {s.destination_airport}</td>
+                        <td className="py-4 text-white font-medium">{s.chargeable_weight} kg</td>
+                        <td className="py-4">{getStatusBadge(s.status)}</td>
+                        <td className="py-4 text-center pl-6">
+                          {s.missing_document_count > 0 ? (
+                            <span className="inline-flex items-center justify-center bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-bold h-6 px-2 rounded-lg">
+                              {s.missing_document_count} Pending
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center justify-center bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold h-6 px-2 rounded-lg">
+                              0 Clear
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-4 text-text-muted font-medium">{s.assigned_owner || 'Unassigned'}</td>
+                        <td className="py-4 pr-4 text-right">
+                          <div className="inline-flex items-center gap-3 justify-end">
+                            <button 
+                              onClick={() => navigate(`/shipments/${s.id}`)}
+                              className="bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
+                            >
+                              Audit Documents &rarr;
+                            </button>
+                            
+                            {/* Edit parameters */}
+                            <button 
+                              onClick={() => navigate(`/shipments/edit/${s.id}`)}
+                              title="Edit Cargo Parameters"
+                              className="text-text-muted hover:text-white p-2 hover:bg-[#151d30] rounded-lg transition-colors border border-transparent hover:border-[#222f47]"
+                            >
+                              <Edit size={14} />
+                            </button>
+
+                            {/* Permanent delete for cancelled shipments if admin */}
+                            {activePortal === 'admin' && s.status === 'CANCELLED' && (
+                              <button 
+                                onClick={() => handleDeleteShipment(s.id, s.awb_number)}
+                                title="Delete Cancelled Shipment"
+                                className="text-red-500 hover:text-white p-2 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card List View */}
+              <div className="grid grid-cols-1 gap-4 md:hidden">
+                {filteredShipments.map((s) => (
+                  <div key={s.id} className="bg-[#151d30] border border-[#222f47] rounded-2xl p-5 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1">
+                        <span className="flex items-center gap-1.5 text-sm font-bold font-header tracking-wide text-white">
                           {s.priority_flag && <span className="w-1.5 h-1.5 bg-red-500 rounded-full" title="Priority Shipment"></span>}
                           {s.awb_number}
                         </span>
-                      </td>
-                      <td className="py-4 text-text-muted font-medium">
-                        <div>
-                          <p className="text-white font-semibold">{s.customer_name || 'Guest Exporter'}</p>
-                          <p className="text-[10px] text-text-muted mt-0.5">{s.customer_type || 'N/A'}</p>
-                        </div>
-                      </td>
-                      <td className="py-4 font-semibold text-text-muted uppercase">{s.origin_airport} &rarr; {s.destination_airport}</td>
-                      <td className="py-4 text-white font-medium">{s.chargeable_weight} kg</td>
-                      <td className="py-4">{getStatusBadge(s.status)}</td>
-                      <td className="py-4 text-center pl-6">
+                        <p className="text-xs font-semibold text-white">{s.customer_name || 'Guest Exporter'}</p>
+                        <p className="text-[10px] text-text-muted uppercase tracking-wider">{s.customer_type || 'N/A'}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5">
+                        {getStatusBadge(s.status)}
                         {s.missing_document_count > 0 ? (
                           <span className="inline-flex items-center justify-center bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-bold h-6 px-2 rounded-lg">
                             {s.missing_document_count} Pending
@@ -400,42 +464,60 @@ export default function Dashboard({ activePortal, activeUser }) {
                             0 Clear
                           </span>
                         )}
-                      </td>
-                      <td className="py-4 text-text-muted font-medium">{s.assigned_owner || 'Unassigned'}</td>
-                      <td className="py-4 pr-4 text-right">
-                        <div className="inline-flex items-center gap-3 justify-end">
-                          <button 
-                            onClick={() => navigate(`/shipments/${s.id}`)}
-                            className="bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
-                          >
-                            Audit Documents &rarr;
-                          </button>
-                          
-                          {/* Edit parameters */}
-                          <button 
-                            onClick={() => navigate(`/shipments/edit/${s.id}`)}
-                            title="Edit Cargo Parameters"
-                            className="text-text-muted hover:text-white p-2 hover:bg-[#151d30] rounded-lg transition-colors border border-transparent hover:border-[#222f47]"
-                          >
-                            <Edit size={14} />
-                          </button>
+                      </div>
+                    </div>
 
-                          {activePortal === 'admin' && s.status === 'CANCELLED' && (
-                            <button 
-                              onClick={() => handleDeleteShipment(s.id, s.awb_number)}
-                              title="Delete Cancelled Shipment"
-                              className="text-red-500 hover:text-white p-2 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                    <div className="h-px bg-[#222f47]/50" />
+
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div>
+                        <span className="text-[9px] text-text-muted uppercase tracking-wider font-bold block mb-0.5">Route</span>
+                        <span className="text-white font-medium uppercase">{s.origin_airport} &rarr; {s.destination_airport}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-text-muted uppercase tracking-wider font-bold block mb-0.5">Weight</span>
+                        <span className="text-white font-medium">{s.chargeable_weight} kg</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-text-muted uppercase tracking-wider font-bold block mb-0.5">Owner</span>
+                        <span className="text-white font-medium truncate block">{s.assigned_owner || 'Unassigned'}</span>
+                      </div>
+                    </div>
+
+                    <div className="h-px bg-[#222f47]/50" />
+
+                    <div className="flex items-center justify-between gap-3 pt-1">
+                      <button 
+                        onClick={() => navigate(`/shipments/${s.id}`)}
+                        className="flex-1 bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue py-2.5 rounded-xl text-xs font-bold text-center transition-all duration-150"
+                      >
+                        Audit Documents &rarr;
+                      </button>
+                      
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => navigate(`/shipments/edit/${s.id}`)}
+                          title="Edit Cargo Parameters"
+                          className="text-text-muted hover:text-white p-2.5 bg-[#0b0f19] border border-[#222f47] rounded-xl transition-colors"
+                        >
+                          <Edit size={14} />
+                        </button>
+
+                        {activePortal === 'admin' && s.status === 'CANCELLED' && (
+                          <button 
+                            onClick={() => handleDeleteShipment(s.id, s.awb_number)}
+                            title="Delete Cancelled Shipment"
+                            className="text-red-500 hover:text-red-300 p-2.5 bg-[#0b0f19] border border-red-500/20 rounded-xl transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>

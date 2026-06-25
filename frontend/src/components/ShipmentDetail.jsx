@@ -506,7 +506,7 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
                 <span className="font-header font-bold text-xl text-white tracking-wide">{shipment.awb_number}</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Origin airport</span>
                   <strong className="text-white uppercase font-bold text-sm">{shipment.origin_airport}</strong>
@@ -517,7 +517,7 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Pickup City</span>
                   <span className="text-white font-medium">{shipment.pickup_city || 'N/A'}</span>
@@ -528,7 +528,7 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Gross Weight</span>
                   <span className="text-white font-medium">{shipment.actual_weight} kg</span>
@@ -539,7 +539,7 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Chargeable weight</span>
                   <strong className="text-emerald-400 font-bold text-base">{shipment.chargeable_weight} kg</strong>
@@ -550,7 +550,7 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 border-t border-[#222f47] pt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-[#222f47] pt-4">
                 <div>
                   <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block mb-1.5">Cargo Status Badge</span>
                   <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${

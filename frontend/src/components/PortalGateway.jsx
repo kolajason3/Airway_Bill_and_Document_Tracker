@@ -431,7 +431,7 @@ export default function PortalGateway({ onLogin }) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Phone Number</label>
                   <input 
@@ -653,7 +653,7 @@ export default function PortalGateway({ onLogin }) {
 
       {/* Top bar with logo + minimized pills */}
       <div className={`
-        w-full max-w-6xl flex items-center justify-between z-20 mb-8
+        w-full max-w-6xl flex flex-col md:flex-row gap-4 items-center justify-between z-20 mb-8
         transition-all duration-500
         ${activeCard ? 'pt-4' : 'pt-8 lg:pt-16'}
       `}>
@@ -711,7 +711,7 @@ export default function PortalGateway({ onLogin }) {
         {/* 3-column grid — visible when no card is selected */}
         {!activeCard && (
           <div className={`
-            grid grid-cols-1 lg:grid-cols-3 gap-8 w-full
+            grid grid-cols-1 md:grid-cols-3 gap-8 w-full
             transition-all duration-500
             ${phase === 'idle' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}
           `}>
