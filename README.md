@@ -1,80 +1,42 @@
 # Airway Bill & Document Tracker (AWB-DT)
 ### ORBEM Solutions Private Limited — Serverless Supabase Redesign (React JSX)
 
-The **Airway Bill & Document Tracker** is a secure cargo control tower application designed to automate document compliance auditing. This redesigned serverless version uses **React with plain JavaScript/JSX** and **Supabase** for database-backed storage, secure auth, and file uploads.
-
-To make evaluation configuration-free, the application includes an **Automated Local Storage Mock Adapter**. If cloud credentials are not supplied, it automatically emulates all database tables, storage upload buckets, and triggers inside your web browser.
+The **Airway Bill & Document Tracker** is a secure cargo control tower application designed to automate document compliance auditing. This serverless version uses **React (Vite)**, **Supabase** (Postgres + Storage + Edge Functions), and **Resend** to automate operational status notifications to exporter client emails.
 
 ---
 
 ## 🚀 Key Features
 
 1. **Multi-Role Portal Selection Screen**: On startup, choose to sign in as **Admin** (unrestricted override access), log in as a **Staff Employee** (e.g. Akshaya, Rasul khan, Jason), or search and track as a **Guest Exporter**.
-2. **Admin Control Center**: Administrators can edit shipment details, bypass rules to force change cargo statuses, delete shipments entirely, and inspect a global operational audit log.
-3. **Staff Operations Panel**: Cargo employees can run new AWB intakes (registering shipments) and upload compliance files, but are restricted from deleting data or executing final airport gate clearance.
-4. **Real File Upload Vault**: Replaces simple checkbox switches with a drag-and-drop file uploader that saves compliance documents directly to **Supabase Storage** and allows viewing or downloading the files.
-5. **Volumetric Chargeable Calculator**: Integrated volumetric weight tool implementing cargo density checkoffs to calculate chargeable weight (`(L * W * H) / 6000`).
-6. **SQL Database Triggers**: Automatically audits uploaded URLs. Once all 5 files are present, the database auto-promotes the status from `Documents Pending` to `Ready for Review`.
+2. **Client Email Capture**: Operators can input a client contact email on intake, which is saved directly to the database.
+3. **Resend Email Alerts**: Sends status update emails (intake confirmation, document rejections, airliner handover clearance, completion, and cancellations) directly to client/customer mailboxes.
+4. **Outbound Notification Trails**: Renders a dense status dashboard in the shipment details page listing the dispatch history of all email notifications.
+5. **Supabase Edge Functions**: Deployed serverless TypeScript endpoints in Deno handle templates compilation and API routing to Resend.
+6. **Volumetric Chargeable Calculator**: Integrated volumetric weight tool implementing cargo density checkoffs to calculate chargeable weight (`(L * W * H) / 6000`).
 
 ---
 
-## 🛠️ Project Structure
+## 🛠️ Project Documentation
 
-```
-.
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── PortalGateway.jsx  # Login selection screen (Admin, Staff, Exporter Search)
-│   │   │   ├── Dashboard.jsx      # KPIs, shipments grid, and Admin Master logs
-│   │   │   ├── ShipmentDetail.jsx # Uploader panel, Admin overrides, and audit logs timeline
-│   │   │   └── ShipmentForm.jsx   # Cargo registry intake (and edit panel for Admin)
-│   │   ├── services/
-│   │   │   └── supabase.js       # Supabase Client SDK & Local Mock fallback adapter
-│   │   ├── App.jsx                # Navigation, routing, and role state management
-│   │   ├── main.jsx               # React mount root
-│   │   └── index.css              # Tailwind CSS directives & style layers
-│   ├── package.json               # Vite package manifest
-│   ├── tailwind.config.js
-│   ├── vite.config.js
-│   ├── postcss.config.js
-│   └── index.html
-├── schema.sql                     # Production PostgreSQL setup scripts & Triggers
-└── README.md                      # Presentation and configuration guide
-```
+All system layouts, database entities, and build instructions are documented under the `/docs/` folder:
+- [System Architecture](file:///c:/Users/john/Downloads/New%20Project/docs/architecture.md)
+- [Entity-Relationship Diagram](file:///c:/Users/john/Downloads/New%20Project/docs/er-diagram.md)
+- [Use Case Analysis](file:///c:/Users/john/Downloads/New%20Project/docs/use-case-diagram.md)
+- [E2E Testing Report](file:///c:/Users/john/Downloads/New%20Project/docs/test-report.md)
+- [Bug Report & Limits](file:///c:/Users/john/Downloads/New%20Project/docs/bug-report.md)
+- [Deployment & Setup Guide](file:///c:/Users/john/Downloads/New%20Project/docs/deployment-guide.md)
 
 ---
 
-## ⚙️ Running Locally (Zero-Configuration)
+## ⚙️ Running Locally (Mock Mode)
 
 1. Open your terminal in the `frontend` folder:
    ```bash
    cd frontend
-   ```
-2. Install dependencies:
-   ```bash
    npm install
    ```
-3. Start the dev server:
+2. Start the dev server:
    ```bash
    npm run dev
    ```
-4. Open the displayed local address (e.g. `http://localhost:5173` or `http://localhost:5174`) in your browser. 
-   - *Note: Since no `.env` file is present, the app will initialize with sandbox mock data seeded in your browser's Local Storage!*
-
----
-
-## ☁️ Connecting to Supabase Cloud
-
-To connect the application to your live Supabase cloud database:
-
-1. Create a free account at [Supabase](https://supabase.com) and spin up a new project.
-2. Go to the **SQL Editor** tab in your Supabase dashboard, paste the entire SQL script from the root `schema.sql` file, and click **Run**. This will create the tables, triggers, and seed staff profiles.
-3. Open the **Storage** tab, create a new public bucket, and name it exactly `document-vault`.
-4. In the settings of your Supabase project, copy the **Project URL** and **API Anon Key**.
-5. Create a file named `.env` in the `frontend` directory and add your credentials:
-   ```env
-   VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-anon-key-string
-   ```
-6. Restart your Vite development server (`npm run dev`). The client console log will print: `⚡ Connected to Supabase Cloud Instance.` and the app will sync directly with the cloud database.
+3. Open the displayed local address in your browser. Since no `.env` file is present, it will fallback to mock localStorage mode.

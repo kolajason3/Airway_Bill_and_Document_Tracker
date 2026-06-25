@@ -45,6 +45,7 @@ CREATE TABLE customers (
 CREATE TABLE shipments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id UUID REFERENCES customers(id) ON DELETE SET NULL,
+    client_email VARCHAR(255),
     awb_number VARCHAR(50) UNIQUE NOT NULL,
     origin_airport VARCHAR(10) NOT NULL,
     destination_airport VARCHAR(10) NOT NULL,

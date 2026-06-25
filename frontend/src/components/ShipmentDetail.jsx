@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ShieldAlert, ArrowLeft, CheckCircle2, AlertTriangle, FileText, Check, Clock, Upload, Trash2, Eye, ExternalLink, Send, MessageSquare, Ban } from 'lucide-react';
+import { ShieldAlert, ArrowLeft, CheckCircle2, AlertTriangle, FileText, Check, Clock, Upload, Trash2, Eye, ExternalLink, Send, MessageSquare, Ban, Mail } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
 export default function ShipmentDetail({ activePortal, activeUser }) {
@@ -33,10 +33,10 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
       setLoading(true);
       setError('');
 
-      // Fetch shipment details with customer, docs, and history
+      // Fetch shipment details with customer, docs, history, and notifications
       const { data, error: shipmentErr } = await supabase
         .from('shipments')
-        .select('*, customer:customers(*), shipment_documents(*), status_history(*)')
+        .select('*, customer:customers(*), shipment_documents(*), status_history(*), notification_log(*)')
         .eq('id', shipmentId)
         .single();
 
@@ -508,6 +508,17 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Client Email</span>
+                  <span className="text-white font-medium break-all">{shipment.client_email || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Customer Company</span>
+                  <span className="text-white font-medium">{shipment.customer?.company_name || 'Walk-in Exporter'}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
                   <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Origin airport</span>
                   <strong className="text-white uppercase font-bold text-sm">{shipment.origin_airport}</strong>
                 </div>
@@ -832,6 +843,48 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
               </div>
             </div>
           )}
+
+          {/* Email Notifications Dispatch Trail */}
+          <div className="bg-bg-card border border-[#222f47] rounded-2xl p-6">
+            <h2 className="text-xs font-header font-bold text-text-muted flex items-center gap-2 mb-4 border-b border-[#222f47] pb-3 uppercase tracking-wider">
+              <Mail className="text-accent-blue" size={14} /> Email Dispatch Trail
+            </h2>
+            <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+              {!shipment.notification_log || shipment.notification_log.length === 0 ? (
+                <p className="text-xs text-text-muted text-center py-4">No emails dispatched for this consignment.</p>
+              ) : (
+                shipment.notification_log
+                  .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                  .map((log) => {
+                    const statusColors = 
+                      log.send_status === 'SENT' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                      log.send_status === 'FAILED' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                      log.send_status === 'SIMULATED' ? 'bg-gray-500/10 text-gray-400 border border-gray-500/20' :
+                      'bg-amber-500/10 text-amber-400 border border-amber-500/20'; // SKIPPED_NO_EMAIL
+                    
+                    return (
+                      <div key={log.id} className="bg-[#0b0f19] border border-[#222f47] p-3.5 rounded-xl text-xs space-y-1.5 animate-fade-in">
+                        <div className="flex justify-between items-start">
+                          <span className="font-bold text-white text-[11px] max-w-[70%] truncate block">{log.subject}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider border ${statusColors}`}>
+                            {log.send_status}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[9px] text-text-muted uppercase font-bold tracking-wider">
+                          <span>To: {log.recipient_email || 'N/A'}</span>
+                          <span>{new Date(log.created_at).toLocaleString()}</span>
+                        </div>
+                        {log.error_message && (
+                          <div className="p-2 bg-red-500/5 border border-red-500/10 rounded-lg text-[10px] text-red-400/90 font-mono break-words">
+                            Error: {log.error_message}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+              )}
+            </div>
+          </div>
 
           {/* Audit Timeline */}
           <div className="bg-bg-card border border-[#222f47] rounded-2xl p-6">

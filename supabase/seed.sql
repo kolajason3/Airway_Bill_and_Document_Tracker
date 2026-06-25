@@ -17,28 +17,28 @@ ON CONFLICT (id) DO NOTHING;
 
 -- 3. Seed Shipments (Note: Triggers calculate weights and init 5 documents on insert)
 -- Shipment 1: PENDING_DOCUMENTS (Volumetric Weight is authorative: 120x80x60/6000 = 96.0 kg > 45.0 kg actual)
-INSERT INTO shipments (id, customer_id, awb_number, origin_airport, destination_airport, pickup_city, cargo_type, package_count, actual_weight, length_cm, width_cm, height_cm, payment_status, status, priority_flag, assigned_owner, notes) VALUES
-  ('a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000002', '157-12345670', 'HYD', 'DXB', 'Hyderabad', 'Vitamins', 3, 45.00, 120.00, 80.00, 60.00, 'PAID', 'PENDING_DOCUMENTS', false, 'Akshaya', 'Refrigerate if stored overnight.')
+INSERT INTO shipments (id, customer_id, client_email, awb_number, origin_airport, destination_airport, pickup_city, cargo_type, package_count, actual_weight, length_cm, width_cm, height_cm, payment_status, status, priority_flag, assigned_owner, notes) VALUES
+  ('a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000002', 'kolajason3@gmail.com', '157-12345670', 'HYD', 'DXB', 'Hyderabad', 'Vitamins', 3, 45.00, 120.00, 80.00, 60.00, 'PAID', 'PENDING_DOCUMENTS', false, 'Akshaya', 'Refrigerate if stored overnight.')
 ON CONFLICT (awb_number) DO NOTHING;
 
 -- Shipment 2: READY_FOR_HANDOVER (Actual Weight is authorative: 400.0 kg > 10x10x10/6000 volumetric)
-INSERT INTO shipments (id, customer_id, awb_number, origin_airport, destination_airport, pickup_city, cargo_type, package_count, actual_weight, length_cm, width_cm, height_cm, payment_status, status, priority_flag, assigned_owner, notes) VALUES
-  ('a0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000001', '157-12345671', 'DEL', 'SIN', 'Delhi', 'Heavy Machinery parts', 1, 400.00, 10.00, 10.00, 10.00, 'PAID', 'PENDING_DOCUMENTS', true, 'Jason', 'Urgent replacement gear.')
+INSERT INTO shipments (id, customer_id, client_email, awb_number, origin_airport, destination_airport, pickup_city, cargo_type, package_count, actual_weight, length_cm, width_cm, height_cm, payment_status, status, priority_flag, assigned_owner, notes) VALUES
+  ('a0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000001', 'kolajason3@gmail.com', '157-12345671', 'DEL', 'SIN', 'Delhi', 'Heavy Machinery parts', 1, 400.00, 10.00, 10.00, 10.00, 'PAID', 'PENDING_DOCUMENTS', true, 'Jason', 'Urgent replacement gear.')
 ON CONFLICT (awb_number) DO NOTHING;
 
 -- Shipment 3: ON_HOLD (Has rejected document + reason)
-INSERT INTO shipments (id, customer_id, awb_number, origin_airport, destination_airport, pickup_city, cargo_type, package_count, actual_weight, length_cm, width_cm, height_cm, payment_status, status, priority_flag, assigned_owner, notes) VALUES
-  ('a0000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000003', '157-12345672', 'HYD', 'DEL', 'Hyderabad', 'Electronics', 5, 150.00, 50.00, 50.00, 40.00, 'UNPAID', 'PENDING_DOCUMENTS', false, 'Akshaya', 'Fragile electronic chips.')
+INSERT INTO shipments (id, customer_id, client_email, awb_number, origin_airport, destination_airport, pickup_city, cargo_type, package_count, actual_weight, length_cm, width_cm, height_cm, payment_status, status, priority_flag, assigned_owner, notes) VALUES
+  ('a0000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000003', 'kolajason3@gmail.com', '157-12345672', 'HYD', 'DEL', 'Hyderabad', 'Electronics', 5, 150.00, 50.00, 50.00, 40.00, 'UNPAID', 'PENDING_DOCUMENTS', false, 'Akshaya', 'Fragile electronic chips.')
 ON CONFLICT (awb_number) DO NOTHING;
 
 -- Shipment 4: COMPLETED
-INSERT INTO shipments (id, customer_id, awb_number, origin_airport, destination_airport, pickup_city, cargo_type, package_count, actual_weight, length_cm, width_cm, height_cm, payment_status, status, priority_flag, assigned_owner, notes) VALUES
-  ('a0000000-0000-0000-0000-000000000004', 'c0000000-0000-0000-0000-000000000002', '157-12345673', 'DEL', 'HYD', 'Delhi', 'Pharma products', 10, 300.00, 60.00, 60.00, 60.00, 'PAID', 'PENDING_DOCUMENTS', false, 'Jason', 'Completed and delivered.')
+INSERT INTO shipments (id, customer_id, client_email, awb_number, origin_airport, destination_airport, pickup_city, cargo_type, package_count, actual_weight, length_cm, width_cm, height_cm, payment_status, status, priority_flag, assigned_owner, notes) VALUES
+  ('a0000000-0000-0000-0000-000000000004', 'c0000000-0000-0000-0000-000000000002', 'kolajason3@gmail.com', '157-12345673', 'DEL', 'HYD', 'Delhi', 'Pharma products', 10, 300.00, 60.00, 60.00, 60.00, 'PAID', 'PENDING_DOCUMENTS', false, 'Jason', 'Completed and delivered.')
 ON CONFLICT (awb_number) DO NOTHING;
 
 -- Shipment 5: CANCELLED
-INSERT INTO shipments (id, customer_id, awb_number, origin_airport, destination_airport, pickup_city, cargo_type, package_count, actual_weight, length_cm, width_cm, height_cm, payment_status, status, priority_flag, assigned_owner, notes) VALUES
-  ('a0000000-0000-0000-0000-000000000005', 'c0000000-0000-0000-0000-000000000001', '157-12345674', 'SIN', 'HYD', 'Singapore', 'Exotic flowers', 2, 20.00, 40.00, 30.00, 20.00, 'UNPAID', 'PENDING_DOCUMENTS', false, 'Unassigned', 'Cancelled order by agent.')
+INSERT INTO shipments (id, customer_id, client_email, awb_number, origin_airport, destination_airport, pickup_city, cargo_type, package_count, actual_weight, length_cm, width_cm, height_cm, payment_status, status, priority_flag, assigned_owner, notes) VALUES
+  ('a0000000-0000-0000-0000-000000000005', 'c0000000-0000-0000-0000-000000000001', 'kolajason3@gmail.com', '157-12345674', 'SIN', 'HYD', 'Singapore', 'Exotic flowers', 2, 20.00, 40.00, 30.00, 20.00, 'UNPAID', 'PENDING_DOCUMENTS', false, 'Unassigned', 'Cancelled order by agent.')
 ON CONFLICT (awb_number) DO NOTHING;
 
 

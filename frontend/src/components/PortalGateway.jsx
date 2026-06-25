@@ -536,6 +536,10 @@ export default function PortalGateway({ onLogin }) {
                       <span className="text-text-muted block text-[9px] uppercase tracking-wider font-bold mb-0.5">Route</span>
                       <strong className="text-white font-medium">{searchResult.origin_airport} &rarr; {searchResult.destination_airport}</strong>
                     </div>
+                    <div className="col-span-2">
+                      <span className="text-text-muted block text-[9px] uppercase tracking-wider font-bold mb-0.5">Client Email</span>
+                      <strong className="text-white font-medium break-all">{searchResult.client_email || 'N/A'}</strong>
+                    </div>
                     <div>
                       <span className="text-text-muted block text-[9px] uppercase tracking-wider font-bold mb-0.5">Packages</span>
                       <strong className="text-white font-medium">{searchResult.package_count} Pcs</strong>

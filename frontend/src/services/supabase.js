@@ -31,6 +31,7 @@ const defaultShipments = [
   {
     id: 'a0000000-0000-0000-0000-000000000001',
     customer_id: 'c0000000-0000-0000-0000-000000000002',
+    client_email: 'kolajason3@gmail.com',
     awb_number: '157-12345670',
     origin_airport: 'HYD',
     destination_airport: 'DXB',
@@ -54,6 +55,7 @@ const defaultShipments = [
   {
     id: 'a0000000-0000-0000-0000-000000000002',
     customer_id: 'c0000000-0000-0000-0000-000000000001',
+    client_email: 'kolajason3@gmail.com',
     awb_number: '157-12345671',
     origin_airport: 'DEL',
     destination_airport: 'SIN',
@@ -77,6 +79,7 @@ const defaultShipments = [
   {
     id: 'a0000000-0000-0000-0000-000000000003',
     customer_id: 'c0000000-0000-0000-0000-000000000003',
+    client_email: 'kolajason3@gmail.com',
     awb_number: '157-12345672',
     origin_airport: 'HYD',
     destination_airport: 'DEL',
@@ -100,6 +103,7 @@ const defaultShipments = [
   {
     id: 'a0000000-0000-0000-0000-000000000004',
     customer_id: 'c0000000-0000-0000-0000-000000000002',
+    client_email: 'kolajason3@gmail.com',
     awb_number: '157-12345673',
     origin_airport: 'DEL',
     destination_airport: 'HYD',
@@ -123,6 +127,7 @@ const defaultShipments = [
   {
     id: 'a0000000-0000-0000-0000-000000000005',
     customer_id: 'c0000000-0000-0000-0000-000000000001',
+    client_email: 'kolajason3@gmail.com',
     awb_number: '157-12345674',
     origin_airport: 'SIN',
     destination_airport: 'HYD',
@@ -192,6 +197,12 @@ const defaultAlerts = [
   { id: 'alert-1', shipment_id: 'a0000000-0000-0000-0000-000000000003', alert_type: 'DOCUMENT_REJECTED', message: 'A document was rejected — shipment placed on hold.', is_read: false, created_at: new Date().toISOString() }
 ];
 
+const defaultNotificationLogs = [
+  { id: 'n-1-1', shipment_id: 'a0000000-0000-0000-0000-000000000001', channel: 'EMAIL', recipient_email: 'kolajason3@gmail.com', subject: 'Shipment 157-12345670 Registered — Documents Pending', status_snapshot: 'PENDING_DOCUMENTS', send_status: 'SENT', error_message: null, created_at: new Date(Date.now() - 5 * 3600000).toISOString() },
+  { id: 'n-2-1', shipment_id: 'a0000000-0000-0000-0000-000000000002', channel: 'EMAIL', recipient_email: 'kolajason3@gmail.com', subject: 'Shipment 157-12345671 — Ready for Airline Handover', status_snapshot: 'READY_FOR_HANDOVER', send_status: 'SENT', error_message: null, created_at: new Date(Date.now() - 3 * 3600000).toISOString() },
+  { id: 'n-3-1', shipment_id: 'a0000000-0000-0000-0000-000000000003', channel: 'EMAIL', recipient_email: 'kolajason3@gmail.com', subject: 'Action Needed: Shipment 157-12345672 On Hold', status_snapshot: 'ON_HOLD', send_status: 'SENT', error_message: null, created_at: new Date(Date.now() - 2 * 3600000).toISOString() }
+];
+
 const initLocalStorage = () => {
   if (!localStorage.getItem('sb_staff_profiles')) {
     localStorage.setItem('sb_staff_profiles', JSON.stringify(defaultStaff));
@@ -210,6 +221,9 @@ const initLocalStorage = () => {
   }
   if (!localStorage.getItem('sb_alerts')) {
     localStorage.setItem('sb_alerts', JSON.stringify(defaultAlerts));
+  }
+  if (!localStorage.getItem('sb_notification_log')) {
+    localStorage.setItem('sb_notification_log', JSON.stringify(defaultNotificationLogs));
   }
   if (!localStorage.getItem('sb_whatsapp_logs')) {
     localStorage.setItem('sb_whatsapp_logs', JSON.stringify([]));
@@ -260,6 +274,7 @@ class MockSupabaseClient {
           };
           return {
             single: async () => ({ data: summary, error: null }),
+            maybeSingle: async () => ({ data: summary, error: null }),
             then: async (resolve) => resolve({ data: [summary], error: null })
           };
         }
@@ -281,21 +296,28 @@ class MockSupabaseClient {
           });
         }
 
+        if (table === 'notification_log') {
+          list = JSON.parse(localStorage.getItem('sb_notification_log') || '[]');
+        }
+
         // Emulate joins inside details
         if (table === 'shipments') {
           const customers = JSON.parse(localStorage.getItem('sb_customers') || '[]');
           const docs = JSON.parse(localStorage.getItem('sb_shipment_documents') || '[]');
           const history = JSON.parse(localStorage.getItem('sb_status_history') || '[]');
+          const notifications = JSON.parse(localStorage.getItem('sb_notification_log') || '[]');
 
           list = list.map(s => {
             const cust = customers.find(c => c.id === s.customer_id) || null;
             const shDocs = docs.filter(d => d.shipment_id === s.id);
             const shHist = history.filter(h => h.shipment_id === s.id);
+            const shNotif = notifications.filter(n => n.shipment_id === s.id);
             return {
               ...s,
               customer: cust,
               shipment_documents: shDocs,
-              status_history: shHist
+              status_history: shHist,
+              notification_log: shNotif
             };
           });
         }
@@ -305,6 +327,7 @@ class MockSupabaseClient {
             let filtered = list.filter(item => item[column] === value);
             return {
               single: async () => ({ data: filtered[0] || null, error: null }),
+              maybeSingle: async () => ({ data: filtered[0] || null, error: null }),
               then: async (resolve) => resolve({ data: filtered, error: null })
             };
           },
@@ -370,6 +393,21 @@ class MockSupabaseClient {
               created_at: new Date().toISOString()
             });
             localStorage.setItem('sb_status_history', JSON.stringify(logs));
+
+            // Log mock notification
+            const notifications = JSON.parse(localStorage.getItem('sb_notification_log') || '[]');
+            notifications.push({
+              id: crypto.randomUUID(),
+              shipment_id: sh.id,
+              channel: 'EMAIL',
+              recipient_email: sh.client_email || null,
+              subject: `Shipment ${sh.awb_number} Registered — Documents Pending`,
+              status_snapshot: sh.status,
+              send_status: sh.client_email ? 'SENT' : 'SKIPPED_NO_EMAIL',
+              error_message: null,
+              created_at: new Date().toISOString()
+            });
+            localStorage.setItem('sb_notification_log', JSON.stringify(notifications));
           });
         }
 
@@ -379,6 +417,7 @@ class MockSupabaseClient {
         return {
           select: () => ({
             single: async () => ({ data: newRows[0], error: null }),
+            maybeSingle: async () => ({ data: newRows[0] || null, error: null }),
             then: async (resolve) => resolve({ data: newRows, error: null })
           }),
           then: async (resolve) => resolve({ data: newRows, error: null })
@@ -396,12 +435,33 @@ class MockSupabaseClient {
                 
                 // Trigger emulator for weight recalculations
                 if (table === 'shipments') {
+                  const oldStatus = item.status;
                   const lengthVal = parseFloat(updated.length_cm) || 0;
                   const widthVal = parseFloat(updated.width_cm) || 0;
                   const heightVal = parseFloat(updated.height_cm) || 0;
                   const actualWeightVal = parseFloat(updated.actual_weight) || 0;
                   updated.volumetric_weight = (lengthVal * widthVal * heightVal) / 6000;
                   updated.chargeable_weight = Math.max(actualWeightVal, updated.volumetric_weight);
+                  
+                  if (updates.status && updates.status !== oldStatus) {
+                    const notifications = JSON.parse(localStorage.getItem('sb_notification_log') || '[]');
+                    let subjectText = `Operations update for AWB: ${updated.awb_number}`;
+                    if (updates.status === 'COMPLETED') subjectText = `Shipment ${updated.awb_number} Completed`;
+                    else if (updates.status === 'CANCELLED') subjectText = `Shipment ${updated.awb_number} Cancelled`;
+                    
+                    notifications.push({
+                      id: crypto.randomUUID(),
+                      shipment_id: updated.id,
+                      channel: 'EMAIL',
+                      recipient_email: updated.client_email || null,
+                      subject: subjectText,
+                      status_snapshot: updates.status,
+                      send_status: updated.client_email ? 'SENT' : 'SKIPPED_NO_EMAIL',
+                      error_message: null,
+                      created_at: new Date().toISOString()
+                    });
+                    localStorage.setItem('sb_notification_log', JSON.stringify(notifications));
+                  }
                 }
 
                 updatedRows.push(updated);
@@ -454,6 +514,25 @@ class MockSupabaseClient {
                   });
                   localStorage.setItem('sb_status_history', JSON.stringify(logs));
 
+                  // Trigger email notification log in mock!
+                  const notifications = JSON.parse(localStorage.getItem('sb_notification_log') || '[]');
+                  let subjectText = `Operations update for AWB: ${sh.awb_number}`;
+                  if (newStatus === 'ON_HOLD') subjectText = `Action Needed: Shipment ${sh.awb_number} On Hold`;
+                  else if (newStatus === 'READY_FOR_HANDOVER') subjectText = `Shipment ${sh.awb_number} — Ready for Airline Handover`;
+                  
+                  notifications.push({
+                    id: crypto.randomUUID(),
+                    shipment_id: sh.id,
+                    channel: 'EMAIL',
+                    recipient_email: sh.client_email || null,
+                    subject: subjectText,
+                    status_snapshot: newStatus,
+                    send_status: sh.client_email ? 'SENT' : 'SKIPPED_NO_EMAIL',
+                    error_message: null,
+                    created_at: new Date().toISOString()
+                  });
+                  localStorage.setItem('sb_notification_log', JSON.stringify(notifications));
+
                   // Alert creation
                   if (newStatus === 'ON_HOLD') {
                     const alerts = JSON.parse(localStorage.getItem('sb_alerts') || '[]');
@@ -474,6 +553,7 @@ class MockSupabaseClient {
             return {
               select: () => ({
                 single: async () => ({ data: updatedRows[0] || null, error: null }),
+                maybeSingle: async () => ({ data: updatedRows[0] || null, error: null }),
                 then: async (resolve) => resolve({ data: updatedRows, error: null })
               }),
               then: async (resolve) => resolve({ data: updatedRows, error: null })

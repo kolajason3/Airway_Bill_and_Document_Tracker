@@ -29,6 +29,7 @@ export default function ShipmentForm({ activePortal, activeUser }) {
   const [assignedOwner, setAssignedOwner] = useState('Unassigned');
   const [notes, setNotes] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('UNPAID');
+  const [clientEmail, setClientEmail] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -48,6 +49,7 @@ export default function ShipmentForm({ activePortal, activeUser }) {
         setCustomers(data);
         if (data.length > 0 && !editShipmentId) {
           setSelectedCustomerId(data[0].id);
+          setClientEmail(data[0].email || '');
         }
       }
     });
@@ -103,6 +105,7 @@ export default function ShipmentForm({ activePortal, activeUser }) {
               setAssignedOwner(data.assigned_owner || 'Unassigned');
               setNotes(data.notes || '');
               setPaymentStatus(data.payment_status || 'UNPAID');
+              setClientEmail(data.client_email || '');
             }
           }
           setLoading(false);
@@ -166,6 +169,7 @@ export default function ShipmentForm({ activePortal, activeUser }) {
 
       const payload = {
         customer_id: selectedCustomerId || null,
+        client_email: clientEmail.trim() || null,
         awb_number: awb.trim(),
         origin_airport: origin.trim().toUpperCase(),
         destination_airport: destination.trim().toUpperCase(),
@@ -329,13 +333,24 @@ export default function ShipmentForm({ activePortal, activeUser }) {
             {/* Left Inputs Panel */}
             <div className="lg:col-span-7 space-y-6">
               
-              {/* Customer + AWB */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Customer + Client Email + AWB */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">Linked Customer Profile</label>
                   <select
                     value={selectedCustomerId}
-                    onChange={(e) => setSelectedCustomerId(e.target.value)}
+                    onChange={(e) => {
+                      const custId = e.target.value;
+                      setSelectedCustomerId(custId);
+                      if (custId) {
+                        const cust = customers.find(c => c.id === custId);
+                        if (cust) {
+                          setClientEmail(cust.email || '');
+                        }
+                      } else {
+                        setClientEmail('');
+                      }
+                    }}
                     disabled={editShipmentId}
                     className="bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3 text-sm w-full text-white outline-none focus:border-accent-blue transition-colors duration-200 disabled:opacity-50"
                   >
@@ -344,6 +359,17 @@ export default function ShipmentForm({ activePortal, activeUser }) {
                       <option key={c.id} value={c.id}>{c.company_name} ({c.type})</option>
                     ))}
                   </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">Client Contact Email</label>
+                  <input 
+                    type="email"
+                    placeholder="e.g. client@example.com"
+                    value={clientEmail}
+                    onChange={(e) => setClientEmail(e.target.value)}
+                    className="bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3 text-sm w-full text-white placeholder-text-muted outline-none focus:border-accent-blue transition-colors duration-200"
+                  />
                 </div>
 
                 <div className="space-y-2">
