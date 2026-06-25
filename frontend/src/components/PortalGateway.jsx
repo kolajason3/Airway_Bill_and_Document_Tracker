@@ -55,6 +55,13 @@ export default function PortalGateway({ onLogin }) {
   const [searchError, setSearchError] = useState('');
   const [searchResult, setSearchResult] = useState(null);
 
+  // New employee registration state
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [regName, setRegName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regRole, setRegRole] = useState('Employee');
+
   // Which card is currently expanded (null = show all 3)
   const [activeCard, setActiveCard] = useState(null);
   // Animation phase: 'idle' | 'expanding' | 'expanded' | 'collapsing'
@@ -135,6 +142,59 @@ export default function PortalGateway({ onLogin }) {
     } catch (err) {
       console.error(err);
       setEmployeeError('An error occurred during verification.');
+    }
+  };
+
+  const handleEmployeeRegister = async (e) => {
+    e.preventDefault();
+    setEmployeeError('');
+
+    const nameToReg = regName.trim();
+    const emailToReg = regEmail.trim().toLowerCase();
+    const phoneToReg = regPhone.trim();
+    const roleToReg = regRole;
+
+    if (!nameToReg || !emailToReg) {
+      setEmployeeError('Name and Email are required.');
+      return;
+    }
+
+    try {
+      // 1. Check if email already exists
+      const { data: existing, error: checkErr } = await supabase
+        .from('staff_profiles')
+        .select('id')
+        .eq('email', emailToReg)
+        .maybeSingle();
+
+      if (existing) {
+        setEmployeeError('An employee profile with this email already exists.');
+        return;
+      }
+
+      // 2. Insert new staff profile
+      const newStaff = {
+        name: nameToReg,
+        role: roleToReg,
+        email: emailToReg,
+        phone: phoneToReg || null,
+        logged_in: true
+      };
+
+      const { data, error: insertErr } = await supabase
+        .from('staff_profiles')
+        .insert(newStaff)
+        .select()
+        .single();
+
+      if (insertErr) throw insertErr;
+
+      // 3. Log in successfully
+      onLogin('employee', data);
+
+    } catch (err) {
+      console.error(err);
+      setEmployeeError('Failed to register new employee. Verify database schema.');
     }
   };
 
@@ -297,7 +357,7 @@ export default function PortalGateway({ onLogin }) {
             </form>
           )}
 
-          {activeCard === 'employee' && (
+          {activeCard === 'employee' && !isRegistering && (
             <form onSubmit={handleEmployeeSubmit} className="space-y-5 animate-fade-in">
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Employee Email</label>
@@ -329,6 +389,99 @@ export default function PortalGateway({ onLogin }) {
               >
                 Sign In as Staff <ArrowRight size={16} />
               </button>
+              
+              <div className="text-center mt-3 border-t border-[#222f47]/50 pt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRegistering(true);
+                    setEmployeeError('');
+                  }}
+                  className="text-xs font-semibold text-emerald-400 hover:underline transition-colors"
+                >
+                  New employee? Register account
+                </button>
+              </div>
+            </form>
+          )}
+
+          {activeCard === 'employee' && isRegistering && (
+            <form onSubmit={handleEmployeeRegister} className="space-y-4 animate-fade-in">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Full Name *</label>
+                <input 
+                  type="text"
+                  placeholder="e.g. Rahul Sharma"
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3 text-xs text-white placeholder-text-muted outline-none focus:border-emerald-500 transition-all"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Email Address *</label>
+                <input 
+                  type="email"
+                  placeholder="e.g. rahul@orbem.com"
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3 text-xs text-white placeholder-text-muted outline-none focus:border-emerald-500 transition-all"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Phone Number</label>
+                  <input 
+                    type="text"
+                    placeholder="+91-XXXXX-XXXXX"
+                    value={regPhone}
+                    onChange={(e) => setRegPhone(e.target.value)}
+                    className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3 text-xs text-white placeholder-text-muted outline-none focus:border-emerald-500 transition-all"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Role *</label>
+                  <select 
+                    value={regRole}
+                    onChange={(e) => setRegRole(e.target.value)}
+                    className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-emerald-500 transition-all"
+                  >
+                    <option value="Employee">Employee</option>
+                    <option value="Administrator">Administrator</option>
+                  </select>
+                </div>
+              </div>
+
+              {employeeError && (
+                <div className="text-red-400 text-[11px] flex items-center gap-1.5 animate-pulse mt-2">
+                  <AlertCircle size={13} />
+                  <span>{employeeError}</span>
+                </div>
+              )}
+
+              <button 
+                type="submit"
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 mt-2 hover:shadow-lg hover:shadow-emerald-500/20 active:scale-[0.98]"
+              >
+                Create Account & Sign In <ArrowRight size={16} />
+              </button>
+
+              <div className="text-center mt-3 border-t border-[#222f47]/50 pt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRegistering(false);
+                    setEmployeeError('');
+                  }}
+                  className="text-xs font-semibold text-emerald-400 hover:underline transition-colors"
+                >
+                  Already have an account? Sign In
+                </button>
+              </div>
             </form>
           )}
 
