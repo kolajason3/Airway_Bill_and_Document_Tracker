@@ -20,6 +20,7 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
   const [whatsappLogs, setWhatsappLogs] = useState([]);
   const [customMsg, setCustomMsg] = useState('');
   const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [isMessageEdited, setIsMessageEdited] = useState(false);
 
   const isAdmin = activePortal === 'admin';
   const isAssigned = shipment 
@@ -69,6 +70,8 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
       setShipment(data);
       if (data && data.customer && data.customer.phone) {
         setWhatsappPhone(data.customer.phone);
+      } else {
+        setWhatsappPhone('');
       }
 
       // Load WhatsApp logs from local storage
@@ -85,14 +88,15 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
   };
 
   useEffect(() => {
+    setIsMessageEdited(false);
     fetchShipmentData();
   }, [shipmentId]);
 
   // Pre-fill WhatsApp message text based on template selection
   useEffect(() => {
-    if (!shipment) return;
+    if (!shipment || isMessageEdited) return;
     const awbNo = shipment.awb_number;
-    const trackingLink = `${window.location.origin}`;
+    const trackingLink = `${window.location.origin}/shipments/${shipmentId}`;
     
     if (alertTemplate === 'rejection') {
       const rejectedDocs = shipment.shipment_documents?.filter(d => d.status === 'REJECTED') || [];
@@ -573,7 +577,7 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
           </div>
 
           {/* WhatsApp Alerts Panel */}
-          {activePortal !== 'exporter' && canModify && (
+          {activePortal !== 'exporter' && (
             <div className="bg-bg-card border border-[#222f47] rounded-2xl p-6 space-y-4">
               <h2 className="text-xs font-header font-bold text-text-muted flex items-center gap-2 border-b border-[#222f47] pb-3 uppercase tracking-wider">
                 <MessageSquare className="text-accent-blue" size={15} /> WhatsApp Alerts Dispatcher
@@ -600,7 +604,10 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
                   <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Message Template</span>
                   <select
                     value={alertTemplate}
-                    onChange={(e) => setAlertTemplate(e.target.value)}
+                    onChange={(e) => {
+                      setAlertTemplate(e.target.value);
+                      setIsMessageEdited(false);
+                    }}
                     className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-3 py-2 text-white outline-none focus:border-accent-blue"
                   >
                     <option value="rejection">Warehouse / Intake Rejection Notice</option>
@@ -616,7 +623,10 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
                   <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Message Body Preview</span>
                   <textarea
                     value={customMsg}
-                    onChange={(e) => setCustomMsg(e.target.value)}
+                    onChange={(e) => {
+                      setCustomMsg(e.target.value);
+                      setIsMessageEdited(true);
+                    }}
                     rows={4}
                     className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-3.5 py-2.5 text-white placeholder-text-muted outline-none focus:border-accent-blue resize-none"
                   ></textarea>
