@@ -22,9 +22,9 @@ const defaultStaff = [
 ];
 
 const defaultCustomers = [
-  { id: 'c0000000-0000-0000-0000-000000000001', name: 'Lufthansa Cargo Service', type: 'LOGISTICS_PARTNER', company_name: 'Lufthansa Cargo AG', email: 'cargo-fra@lufthansa.com', phone: '+49-69-696-0' },
-  { id: 'c0000000-0000-0000-0000-000000000002', name: 'Apex Pharma Logistics', type: 'EXPORTER', company_name: 'Apex Pharmaceuticals', email: 'shipping@apexpharma.com', phone: '+971-4-888-8888' },
-  { id: 'c0000000-0000-0000-0000-000000000003', name: 'Global Electronics Dispatch', type: 'AGENT', company_name: 'Global Electronics Corp', email: 'dispatch@globalelec.com', phone: '+31-20-500-1234' }
+  { id: 'c0000000-0000-0000-0000-000000000001', name: 'Lufthansa Cargo Service', type: 'LOGISTICS_PARTNER', company_name: 'Lufthansa Cargo AG', email: 'kolajason3@gmail.com', phone: '+49-69-696-0' },
+  { id: 'c0000000-0000-0000-0000-000000000002', name: 'Apex Pharma Logistics', type: 'EXPORTER', company_name: 'Apex Pharmaceuticals', email: 'kolajason3@gmail.com', phone: '+971-4-888-8888' },
+  { id: 'c0000000-0000-0000-0000-000000000003', name: 'Global Electronics Dispatch', type: 'AGENT', company_name: 'Global Electronics Corp', email: 'kolajason3@gmail.com', phone: '+31-20-500-1234' }
 ];
 
 const defaultShipments = [

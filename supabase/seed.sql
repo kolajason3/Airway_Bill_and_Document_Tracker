@@ -10,9 +10,9 @@ ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, ph
 
 -- 2. Seed Customers
 INSERT INTO customers (id, name, type, company_name, phone, email) VALUES
-  ('c0000000-0000-0000-0000-000000000001', 'Lufthansa Cargo Service', 'IMPORTER', 'Lufthansa Cargo AG', '+49-69-696-0', 'cargo-fra@lufthansa.com'),
-  ('c0000000-0000-0000-0000-000000000002', 'Apex Pharma Logistics', 'EXPORTER', 'Apex Pharmaceuticals', '+971-4-888-8888', 'shipping@apexpharma.com'),
-  ('c0000000-0000-0000-0000-000000000003', 'Global Electronics Dispatch', 'AGENT', 'Global Electronics Corp', '+31-20-500-1234', 'dispatch@globalelec.com')
+  ('c0000000-0000-0000-0000-000000000001', 'Lufthansa Cargo Service', 'IMPORTER', 'Lufthansa Cargo AG', '+49-69-696-0', 'kolajason3@gmail.com'),
+  ('c0000000-0000-0000-0000-000000000002', 'Apex Pharma Logistics', 'EXPORTER', 'Apex Pharmaceuticals', '+971-4-888-8888', 'kolajason3@gmail.com'),
+  ('c0000000-0000-0000-0000-000000000003', 'Global Electronics Dispatch', 'AGENT', 'Global Electronics Corp', '+31-20-500-1234', 'kolajason3@gmail.com')
 ON CONFLICT (id) DO NOTHING;
 
 -- 3. Seed Shipments (Note: Triggers calculate weights and init 5 documents on insert)
