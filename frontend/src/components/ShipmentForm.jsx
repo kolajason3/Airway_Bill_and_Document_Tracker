@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Database, PlaneTakeoff, Info, ArrowLeft, Loader2, Save } from 'lucide-react';
+import { Database, PlaneTakeoff, Info, ArrowLeft, Loader2, Save, ShieldAlert } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
 export default function ShipmentForm({ activePortal, activeUser }) {
@@ -33,6 +33,10 @@ export default function ShipmentForm({ activePortal, activeUser }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [shipment, setShipment] = useState(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+
   // Live client-side weight calculator
   const [liveVolumetric, setLiveVolumetric] = useState(0);
   const [liveChargeable, setLiveChargeable] = useState(0);
@@ -63,29 +67,43 @@ export default function ShipmentForm({ activePortal, activeUser }) {
         .eq('id', editShipmentId)
         .single()
         .then(({ data, error }) => {
-          if (data) {
-            setAwb(data.awb_number);
-            setOrigin(data.origin_airport);
-            setDestination(data.destination_airport);
-            setPickupCity(data.pickup_city || '');
-            const isStandard = cargoOptions.includes(data.cargo_type);
-            if (isStandard || !data.cargo_type) {
-              setCargoType(data.cargo_type || '');
-              setCustomCargoType('');
+          if (error || !data) {
+            setNotFound(true);
+            setError('Shipment not found.');
+          } else {
+            setShipment(data);
+            
+            // Check permission
+            const isAdmin = activePortal === 'admin';
+            const isOwner = !data.assigned_owner || data.assigned_owner === 'Unassigned' || data.assigned_owner === activeUser?.name;
+            
+            if (!isAdmin && !isOwner) {
+              setPermissionDenied(true);
+              setError('Access Denied: You do not have permission to modify this shipment.');
             } else {
-              setCargoType('Other');
-              setCustomCargoType(data.cargo_type);
+              setAwb(data.awb_number);
+              setOrigin(data.origin_airport);
+              setDestination(data.destination_airport);
+              setPickupCity(data.pickup_city || '');
+              const isStandard = cargoOptions.includes(data.cargo_type);
+              if (isStandard || !data.cargo_type) {
+                setCargoType(data.cargo_type || '');
+                setCustomCargoType('');
+              } else {
+                setCargoType('Other');
+                setCustomCargoType(data.cargo_type);
+              }
+              setPackages(data.package_count.toString());
+              setWeight(data.actual_weight.toString());
+              setLength(data.length_cm.toString());
+              setWidth(data.width_cm.toString());
+              setHeight(data.height_cm.toString());
+              setSelectedCustomerId(data.customer_id || '');
+              setPriorityFlag(data.priority_flag || false);
+              setAssignedOwner(data.assigned_owner || 'Unassigned');
+              setNotes(data.notes || '');
+              setPaymentStatus(data.payment_status || 'UNPAID');
             }
-            setPackages(data.package_count.toString());
-            setWeight(data.actual_weight.toString());
-            setLength(data.length_cm.toString());
-            setWidth(data.width_cm.toString());
-            setHeight(data.height_cm.toString());
-            setSelectedCustomerId(data.customer_id || '');
-            setPriorityFlag(data.priority_flag || false);
-            setAssignedOwner(data.assigned_owner || 'Unassigned');
-            setNotes(data.notes || '');
-            setPaymentStatus(data.payment_status || 'UNPAID');
           }
           setLoading(false);
         });
@@ -107,6 +125,16 @@ export default function ShipmentForm({ activePortal, activeUser }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Security Check
+    if (editShipmentId) {
+      const isAdmin = activePortal === 'admin';
+      const isOwner = !shipment?.assigned_owner || shipment.assigned_owner === 'Unassigned' || shipment.assigned_owner === activeUser?.name;
+      if (!isAdmin && !isOwner) {
+        setError('Access Denied: You do not have permission to modify this shipment.');
+        return;
+      }
+    }
 
     // Field Validations
     if (!awb || !origin || !destination || !length || !width || !height || !weight) {
@@ -178,10 +206,15 @@ export default function ShipmentForm({ activePortal, activeUser }) {
 
       } else {
         // --- NEW INTAKE MODE ---
-        // 1. Check if AWB is unique
-        const { data: existing } = await supabase.from('shipments').select('id').eq('awb_number', awb.trim()).single();
-        if (existing) {
-          setError(`AWB Number ${awb} already exists in database.`);
+        // 1. Check if AWB is unique (using normalized form)
+        const cleanProposed = awb.trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        
+        // Fetch all shipments to do normalized lookup
+        const { data: allShipments } = await supabase.from('shipments').select('awb_number');
+        const duplicate = allShipments?.find(s => s.awb_number.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === cleanProposed);
+        
+        if (duplicate) {
+          setError(`AWB Number equivalent to ${awb} (${duplicate.awb_number}) already exists in database.`);
           setLoading(false);
           return;
         }
@@ -205,6 +238,68 @@ export default function ShipmentForm({ activePortal, activeUser }) {
       setLoading(false);
     }
   };
+
+  if (permissionDenied) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-6">
+        <button 
+          onClick={() => navigate('/')}
+          className="inline-flex items-center gap-1 text-sm font-semibold text-text-muted hover:text-white transition-colors duration-150"
+        >
+          <ArrowLeft size={16} /> Back to Registry
+        </button>
+
+        <div className="max-w-md mx-auto my-12 bg-bg-card border border-[#222f47] p-8 rounded-3xl text-center space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center mx-auto">
+            <ShieldAlert size={32} />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-lg font-header font-bold text-white">Access Denied</h3>
+            <p className="text-xs text-text-muted leading-relaxed">
+              This airway bill is assigned to operator <strong className="text-white">{shipment?.assigned_owner || 'another controller'}</strong>. Since you are not the assigned operator or a system administrator, you are blocked from modifying its cargo parameters.
+            </p>
+          </div>
+          <button 
+            onClick={() => navigate('/')}
+            className="w-full bg-[#151d30] border border-[#222f47] hover:bg-[#222f47] text-white py-3 rounded-xl text-xs font-bold transition-all duration-150"
+          >
+            Return to Registry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-6">
+        <button 
+          onClick={() => navigate('/')}
+          className="inline-flex items-center gap-1 text-sm font-semibold text-text-muted hover:text-white transition-colors duration-150"
+        >
+          <ArrowLeft size={16} /> Back to Registry
+        </button>
+
+        <div className="max-w-md mx-auto my-12 bg-bg-card border border-[#222f47] p-8 rounded-3xl text-center space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center mx-auto">
+            <ShieldAlert size={32} />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-lg font-header font-bold text-white">Consignment Not Found</h3>
+            <p className="text-xs text-text-muted leading-relaxed">
+              The airway bill or shipment profile you are trying to edit does not exist in the database.
+            </p>
+          </div>
+          <button 
+            onClick={() => navigate('/')}
+            className="w-full bg-[#151d30] border border-[#222f47] hover:bg-[#222f47] text-white py-3 rounded-xl text-xs font-bold transition-all duration-150"
+          >
+            Return to Registry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -524,7 +619,7 @@ export default function ShipmentForm({ activePortal, activeUser }) {
           <div className="flex justify-end gap-3 border-t border-[#222f47] pt-6">
             <button
               type="button"
-              onClick={onCancel}
+              onClick={() => navigate('/')}
               className="bg-transparent hover:bg-white/[0.02] border border-[#222f47] text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-150"
             >
               Cancel

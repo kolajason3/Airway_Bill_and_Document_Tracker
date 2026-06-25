@@ -16,10 +16,15 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
   const [rejectingDocId, setRejectingDocId] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
-  // WhatsApp Alert panel states
   const [alertTemplate, setAlertTemplate] = useState('rejection');
   const [whatsappLogs, setWhatsappLogs] = useState([]);
   const [customMsg, setCustomMsg] = useState('');
+
+  const isAdmin = activePortal === 'admin';
+  const isAssigned = shipment 
+    ? (!shipment.assigned_owner || shipment.assigned_owner === 'Unassigned' || shipment.assigned_owner === activeUser?.name)
+    : false;
+  const canModify = isAdmin || isAssigned;
 
   const fetchShipmentData = async () => {
     try {
@@ -116,6 +121,10 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
   }, [shipment, alertTemplate]);
 
   const handleFileUpload = async (docId, file, docType) => {
+    if (!canModify) {
+      setError('Access Denied: You do not have permission to upload files for this shipment.');
+      return;
+    }
     if (!file || !shipment) return;
     
     try {
@@ -171,6 +180,10 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
   };
 
   const handleDeleteFile = async (docId, docType) => {
+    if (!canModify) {
+      setError('Access Denied: You do not have permission to delete files for this shipment.');
+      return;
+    }
     if (!window.confirm(`Are you sure you want to clear the uploaded file for ${formatDocLabel(docType)}?`)) {
       return;
     }
@@ -210,6 +223,10 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
   };
 
   const handleApproveDoc = async (docId, docType) => {
+    if (!canModify) {
+      setError('Access Denied: You do not have permission to approve documents.');
+      return;
+    }
     try {
       setError('');
       setActionSuccess('');
@@ -244,6 +261,10 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
 
   const handleRejectDocSubmit = async (e) => {
     e.preventDefault();
+    if (!canModify) {
+      setError('Access Denied: You do not have permission to reject documents.');
+      return;
+    }
     if (!rejectionReason.trim()) {
       alert('Please specify a rejection reason.');
       return;
@@ -287,6 +308,10 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
   };
 
   const handleTerminalStateUpdate = async (targetStatus) => {
+    if (!canModify) {
+      setError('Access Denied: You do not have permission to transition this shipment status.');
+      return;
+    }
     if (!window.confirm(`Are you sure you want to transition this shipment to terminal state: ${targetStatus}?`)) {
       return;
     }
@@ -373,13 +398,22 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
 
   if (error && !shipment) {
     return (
-      <div className="space-y-4">
-        <button onClick={onBack} className="inline-flex items-center gap-1 text-sm font-semibold text-text-muted hover:text-white transition-colors duration-150">
-          <ArrowLeft size={16} /> Back to Registry
-        </button>
-        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-sm text-red-400">
-          {error}
+      <div className="max-w-md mx-auto my-12 bg-bg-card border border-[#222f47] p-8 rounded-3xl text-center space-y-6 shadow-2xl">
+        <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center mx-auto">
+          <ShieldAlert size={32} />
         </div>
+        <div className="space-y-2">
+          <h3 className="text-lg font-header font-bold text-white">Consignment Not Found</h3>
+          <p className="text-xs text-text-muted leading-relaxed">
+            {error || "The airway bill or shipment profile you are looking for does not exist, or you lack the permission to view it."}
+          </p>
+        </div>
+        <button 
+          onClick={() => navigate('/')}
+          className="w-full bg-[#151d30] border border-[#222f47] hover:bg-[#222f47] text-white py-3 rounded-xl text-xs font-bold transition-all duration-150"
+        >
+          Return to Registry
+        </button>
       </div>
     );
   }
@@ -402,7 +436,7 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
           <ArrowLeft size={16} /> Back to Registry
         </button>
 
-        {activePortal !== 'exporter' && shipment.status !== 'COMPLETED' && shipment.status !== 'CANCELLED' && (
+        {activePortal !== 'exporter' && canModify && shipment.status !== 'COMPLETED' && shipment.status !== 'CANCELLED' && (
           <div className="flex gap-2">
             <button
               onClick={() => handleTerminalStateUpdate('COMPLETED')}
@@ -428,6 +462,19 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
             <h4 className="font-bold text-red-400 text-sm">Cargo Custody Hold Triggered</h4>
             <p className="text-xs text-text-muted mt-0.5 leading-relaxed">
               This shipment was placed on hold due to rejected document verification audits. Please review the checklist on the right, correct the errors, and submit fresh files.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Security Read-Only Warning Banner */}
+      {!canModify && (
+        <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl flex items-start gap-3">
+          <ShieldAlert className="text-amber-500 flex-shrink-0 mt-0.5" size={20} />
+          <div>
+            <h4 className="font-bold text-amber-500 text-sm">Security Policy: Read-Only Access</h4>
+            <p className="text-xs text-text-muted mt-0.5 leading-relaxed">
+              This consignment is assigned to controller <strong className="text-white">{shipment.assigned_owner || 'another operator'}</strong>. Since you are not the assigned owner or an administrator, your access is restricted to read-only.
             </p>
           </div>
         </div>
@@ -522,7 +569,7 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
           </div>
 
           {/* WhatsApp Alerts Panel */}
-          {activePortal !== 'exporter' && (
+          {activePortal !== 'exporter' && canModify && (
             <div className="bg-bg-card border border-[#222f47] rounded-2xl p-6 space-y-4">
               <h2 className="text-xs font-header font-bold text-text-muted flex items-center gap-2 border-b border-[#222f47] pb-3 uppercase tracking-wider">
                 <MessageSquare className="text-accent-blue" size={15} /> WhatsApp Alerts Dispatcher
@@ -675,7 +722,7 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
                             <ExternalLink size={12} /> View
                           </a>
 
-                          {activePortal !== 'exporter' && (
+                          {activePortal !== 'exporter' && canModify && (
                             <>
                               {doc.status !== 'APPROVED' && (
                                 <button
@@ -701,7 +748,7 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
                         </>
                       ) : (
                         <>
-                          {activePortal !== 'exporter' ? (
+                          {activePortal !== 'exporter' && canModify ? (
                             <div className="relative">
                               <input 
                                 type="file"
@@ -727,8 +774,8 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
                               </button>
                             </div>
                           ) : (
-                            <span className="text-[9px] text-red-400 font-bold uppercase tracking-wider px-2 py-1 bg-red-500/10 rounded-md border border-red-500/20">
-                              Missing file
+                            <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider px-2.5 py-1 bg-white/5 rounded-md border border-white/10">
+                              Locked
                             </span>
                           )}
                         </>

@@ -126,13 +126,18 @@ export default function Dashboard({ activePortal, activeUser }) {
 
     if (search.trim()) {
       const q = search.toLowerCase();
-      result = result.filter(s => 
-        s.awb_number.toLowerCase().includes(q) || 
-        (s.customer_name && s.customer_name.toLowerCase().includes(q)) ||
-        s.origin_airport.toLowerCase().includes(q) ||
-        s.destination_airport.toLowerCase().includes(q) ||
-        (s.assigned_owner && s.assigned_owner.toLowerCase().includes(q))
-      );
+      const cleanQuery = q.replace(/[^a-zA-Z0-9]/g, '');
+      result = result.filter(s => {
+        const cleanAwb = s.awb_number.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        const matchesAwb = s.awb_number.toLowerCase().includes(q) || (cleanQuery && cleanAwb.includes(cleanQuery));
+        return (
+          matchesAwb ||
+          (s.customer_name && s.customer_name.toLowerCase().includes(q)) ||
+          s.origin_airport.toLowerCase().includes(q) ||
+          s.destination_airport.toLowerCase().includes(q) ||
+          (s.assigned_owner && s.assigned_owner.toLowerCase().includes(q))
+        );
+      });
     }
     setFilteredShipments(result);
   }, [search, statusFilter, priorityFilter, ownerFilter, shipments]);

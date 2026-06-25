@@ -142,16 +142,35 @@ export default function PortalGateway({ onLogin }) {
     e.preventDefault();
     setSearchError('');
     setSearchResult(null);
-    if (!searchAwb.trim()) return;
+    const queryTerm = searchAwb.trim();
+    if (!queryTerm) return;
 
     try {
-      const { data, error } = await supabase
+      // Try exact match first
+      let { data, error } = await supabase
         .from('shipments')
         .select('*, customer:customers(*), shipment_documents(*)')
-        .eq('awb_number', searchAwb.trim())
-        .single();
+        .eq('awb_number', queryTerm)
+        .maybeSingle();
 
-      if (error || !data) {
+      // If exact match fails, do a flexible normalized match
+      if (!data) {
+        const cleanQuery = queryTerm.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        
+        // Fetch all shipments to do the in-memory comparison (safe for typical volume in a prototype)
+        const { data: allShipments } = await supabase
+          .from('shipments')
+          .select('*, customer:customers(*), shipment_documents(*)');
+
+        if (allShipments) {
+          data = allShipments.find(s => {
+            const cleanAwb = s.awb_number.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            return cleanAwb === cleanQuery;
+          }) || null;
+        }
+      }
+
+      if (!data) {
         setSearchError('No shipment found with this AWB number. Try: 157-12345672');
       } else {
         setSearchResult(data);
