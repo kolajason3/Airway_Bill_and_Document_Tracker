@@ -1,0 +1,802 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ShieldAlert, ArrowLeft, CheckCircle2, AlertTriangle, FileText, Check, Clock, Upload, Trash2, Eye, ExternalLink, Send, MessageSquare, Ban } from 'lucide-react';
+import { supabase } from '../services/supabase';
+
+export default function ShipmentDetail({ activePortal, activeUser }) {
+  const navigate = useNavigate();
+  const { id: shipmentId } = useParams();
+  const [shipment, setShipment] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [actionSuccess, setActionSuccess] = useState('');
+  const [uploadingDocId, setUploadingDocId] = useState(null);
+
+  // Reject modal state
+  const [rejectingDocId, setRejectingDocId] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  // WhatsApp Alert panel states
+  const [alertTemplate, setAlertTemplate] = useState('rejection');
+  const [whatsappLogs, setWhatsappLogs] = useState([]);
+  const [customMsg, setCustomMsg] = useState('');
+
+  const fetchShipmentData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      // Fetch shipment details with customer, docs, and history
+      const { data, error: shipmentErr } = await supabase
+        .from('shipments')
+        .select('*, customer:customers(*), shipment_documents(*), status_history(*)')
+        .eq('id', shipmentId)
+        .single();
+
+      if (shipmentErr) throw shipmentErr;
+
+      // Pre-generate signed URLs for documents that have a file_reference
+      if (data && data.shipment_documents) {
+        const docsWithSignedUrls = await Promise.all(data.shipment_documents.map(async (doc) => {
+          if (doc.file_reference) {
+            let path = doc.file_reference;
+            if (path.includes('document-vault/')) {
+              path = path.split('document-vault/')[1];
+            }
+            try {
+              const { data: signedData, error: signedErr } = await supabase.storage
+                .from('document-vault')
+                .createSignedUrl(path, 3600); // 1 hour expiration
+              
+              if (!signedErr && signedData) {
+                return { ...doc, signedViewUrl: signedData.signedUrl };
+              }
+            } catch (err) {
+              console.error('Error generating signed URL:', err);
+            }
+          }
+          return doc;
+        }));
+        data.shipment_documents = docsWithSignedUrls;
+      }
+
+      setShipment(data);
+
+      // Load WhatsApp logs from local storage
+      const localLogs = JSON.parse(localStorage.getItem('sb_whatsapp_logs') || '[]');
+      const filteredLogs = localLogs.filter(log => log.shipment_id === shipmentId);
+      setWhatsappLogs(filteredLogs);
+
+    } catch (err) {
+      console.error(err);
+      setError('Failed to load shipment details, documents, or logs.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchShipmentData();
+  }, [shipmentId]);
+
+  // Pre-fill WhatsApp message text based on template selection
+  useEffect(() => {
+    if (!shipment) return;
+    const awbNo = shipment.awb_number;
+    const trackingLink = `${window.location.origin}`;
+    
+    if (alertTemplate === 'rejection') {
+      const rejectedDocs = shipment.shipment_documents?.filter(d => d.status === 'REJECTED') || [];
+      const reasons = rejectedDocs.map(d => `${formatDocLabel(d.document_type)}: ${d.rejection_reason || 'Re-upload needed'}`).join('; ');
+      
+      setCustomMsg(
+        `Hello! This is ORBEM Solutions. ALERT: Your shipment under AWB ${awbNo} was REJECTED / placed ON_HOLD at our warehouse intake. Cause: ${reasons || 'Required documents failed compliance checks'}. Please resolve this compliance issue at: ${trackingLink}`
+      );
+    } else if (alertTemplate === 'verify_docs') {
+      setCustomMsg(
+        `Hello! This is ORBEM Solutions. We have received your cargo under AWB ${awbNo}. Status: PENDING_DOCUMENTS. We are verifying your uploaded paperwork for next steps. Please ensure all compliance checksheets are uploaded.`
+      );
+    } else if (alertTemplate === 'handover_ready') {
+      setCustomMsg(
+        `Hello! This is ORBEM Solutions. Good news: AWB ${awbNo} has been APPROVED and cleared for next steps. Your cargo is ready for dispatch and transport to the airport terminal.`
+      );
+    } else if (alertTemplate === 'payment_pending') {
+      setCustomMsg(
+        `Hello! This is ORBEM Solutions. We have received AWB ${awbNo} at intake, but payment is currently UNPAID. Please complete payment and upload documents to authorize terminal routing.`
+      );
+    } else if (alertTemplate === 'completed') {
+      setCustomMsg(
+        `Hello! This is ORBEM Solutions. Your cargo under AWB ${awbNo} has been successfully loaded on flights and marked COMPLETED.`
+      );
+    } else {
+      setCustomMsg(
+        `Hello! This is ORBEM Solutions. Operations update for AWB: ${awbNo}. Current status: "${shipment.status}". View status: ${trackingLink}`
+      );
+    }
+  }, [shipment, alertTemplate]);
+
+  const handleFileUpload = async (docId, file, docType) => {
+    if (!file || !shipment) return;
+    
+    try {
+      setError('');
+      setActionSuccess('');
+      setUploadingDocId(docId);
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${shipment.awb_number}/${docType}_${Date.now()}.${fileExt}`;
+
+      // Upload file to Supabase Storage bucket
+      const { error: uploadErr } = await supabase.storage
+        .from('document-vault')
+        .upload(fileName, file);
+
+      if (uploadErr) throw uploadErr;
+
+      // Get public URL
+      const publicUrl = supabase.storage.from('document-vault').getPublicUrl(fileName).data.publicUrl;
+
+      // Update document table
+      const { error: dbErr } = await supabase
+        .from('shipment_documents')
+        .update({
+          file_reference: publicUrl,
+          file_name: file.name,
+          status: 'PENDING',
+          rejection_reason: null
+        })
+        .eq('id', docId);
+
+      if (dbErr) throw dbErr;
+
+      // Log in history
+      await supabase.from('status_history').insert({
+        shipment_id: shipmentId,
+        previous_status: shipment.status,
+        new_status: shipment.status, // will auto recalc in next query anyway
+        action_taken: `Uploaded ${formatDocLabel(docType)}`,
+        action_by: activeUser?.name || 'Operations Agent',
+        notes: `File successfully saved to vault. Filename: ${file.name}`
+      });
+
+      setActionSuccess(`${formatDocLabel(docType)} uploaded successfully.`);
+      await fetchShipmentData();
+
+    } catch (err) {
+      console.error(err);
+      setError('File upload failed. Ensure the storage bucket exists.');
+    } finally {
+      setUploadingDocId(null);
+    }
+  };
+
+  const handleDeleteFile = async (docId, docType) => {
+    if (!window.confirm(`Are you sure you want to clear the uploaded file for ${formatDocLabel(docType)}?`)) {
+      return;
+    }
+
+    try {
+      setError('');
+      setActionSuccess('');
+
+      const { error: dbErr } = await supabase
+        .from('shipment_documents')
+        .update({
+          file_reference: null,
+          file_name: null,
+          status: 'PENDING',
+          rejection_reason: null
+        })
+        .eq('id', docId);
+
+      if (dbErr) throw dbErr;
+
+      // Log history
+      await supabase.from('status_history').insert({
+        shipment_id: shipmentId,
+        previous_status: shipment.status,
+        new_status: shipment.status,
+        action_taken: `Cleared ${formatDocLabel(docType)}`,
+        action_by: activeUser?.name || 'Operations Agent',
+        notes: 'User deleted the file reference.'
+      });
+
+      setActionSuccess(`Cleared file for ${formatDocLabel(docType)}.`);
+      await fetchShipmentData();
+    } catch (err) {
+      console.error(err);
+      setError('Failed to delete document file reference.');
+    }
+  };
+
+  const handleApproveDoc = async (docId, docType) => {
+    try {
+      setError('');
+      setActionSuccess('');
+
+      const { error: dbErr } = await supabase
+        .from('shipment_documents')
+        .update({
+          status: 'APPROVED',
+          rejection_reason: null
+        })
+        .eq('id', docId);
+
+      if (dbErr) throw dbErr;
+
+      // Log history
+      await supabase.from('status_history').insert({
+        shipment_id: shipmentId,
+        previous_status: shipment.status,
+        new_status: shipment.status,
+        action_taken: `Approved ${formatDocLabel(docType)}`,
+        action_by: activeUser?.name || 'Compliance Officer',
+        notes: 'Document passed requirements audit.'
+      });
+
+      setActionSuccess(`Approved ${formatDocLabel(docType)}.`);
+      await fetchShipmentData();
+    } catch (err) {
+      console.error(err);
+      setError('Failed to approve document.');
+    }
+  };
+
+  const handleRejectDocSubmit = async (e) => {
+    e.preventDefault();
+    if (!rejectionReason.trim()) {
+      alert('Please specify a rejection reason.');
+      return;
+    }
+
+    try {
+      setError('');
+      setActionSuccess('');
+
+      const doc = shipment.shipment_documents.find(d => d.id === rejectingDocId);
+      const docType = doc ? doc.document_type : 'Document';
+
+      const { error: dbErr } = await supabase
+        .from('shipment_documents')
+        .update({
+          status: 'REJECTED',
+          rejection_reason: rejectionReason.trim()
+        })
+        .eq('id', rejectingDocId);
+
+      if (dbErr) throw dbErr;
+
+      // Log history
+      await supabase.from('status_history').insert({
+        shipment_id: shipmentId,
+        previous_status: shipment.status,
+        new_status: 'ON_HOLD', // trigger forces this
+        action_taken: `Rejected ${formatDocLabel(docType)}`,
+        action_by: activeUser?.name || 'Compliance Officer',
+        notes: `Rejected with reason: ${rejectionReason.trim()}`
+      });
+
+      setActionSuccess(`Rejected ${formatDocLabel(docType)} and placed shipment ON_HOLD.`);
+      setRejectingDocId(null);
+      setRejectionReason('');
+      await fetchShipmentData();
+    } catch (err) {
+      console.error(err);
+      setError('Failed to reject document. Verify constraints.');
+    }
+  };
+
+  const handleTerminalStateUpdate = async (targetStatus) => {
+    if (!window.confirm(`Are you sure you want to transition this shipment to terminal state: ${targetStatus}?`)) {
+      return;
+    }
+
+    try {
+      setError('');
+      setActionSuccess('');
+
+      const { error: dbErr } = await supabase
+        .from('shipments')
+        .update({ status: targetStatus })
+        .eq('id', shipmentId);
+
+      if (dbErr) throw dbErr;
+
+      // Manual insert of status log since triggers bypass terminal transitions
+      await supabase.from('status_history').insert({
+        shipment_id: shipmentId,
+        previous_status: shipment.status,
+        new_status: targetStatus,
+        action_taken: targetStatus === 'COMPLETED' ? 'SHIPMENT_COMPLETED' : 'SHIPMENT_CANCELLED',
+        action_by: activeUser?.name || 'Operations Director',
+        notes: targetStatus === 'COMPLETED' 
+          ? 'Consignment completed all review stages, and cargo was successfully loaded onto flights.' 
+          : 'Shipment was manually cancelled by operations.'
+      });
+
+      setActionSuccess(`Shipment status manually set to "${targetStatus}".`);
+      await fetchShipmentData();
+    } catch (err) {
+      console.error(err);
+      setError(`Failed to set status to ${targetStatus}.`);
+    }
+  };
+
+  const handleDispatchWhatsApp = () => {
+    if (!shipment || !shipment.customer || !shipment.customer.phone) {
+      alert('Linked customer must have a phone number registered to send WhatsApp alerts.');
+      return;
+    }
+
+    const phone = shipment.customer.phone.replace(/[^0-9]/g, '');
+    const text = encodeURIComponent(customMsg);
+    const waUrl = `https://wa.me/${phone}?text=${text}`;
+
+    // Log the WhatsApp dispatch locally in localStorage
+    const localLogs = JSON.parse(localStorage.getItem('sb_whatsapp_logs') || '[]');
+    const newLog = {
+      id: `wa-log-${Date.now()}`,
+      shipment_id: shipmentId,
+      customer_name: shipment.customer.company_name,
+      recipient_phone: shipment.customer.phone,
+      template_used: alertTemplate,
+      message_content: customMsg,
+      timestamp: new Date().toISOString()
+    };
+    localLogs.unshift(newLog);
+    localStorage.setItem('sb_whatsapp_logs', JSON.stringify(localLogs));
+    setWhatsappLogs(prev => [newLog, ...prev]);
+
+    // Open WhatsApp Web
+    window.open(waUrl, '_blank');
+  };
+
+  const formatDocLabel = (type) => {
+    switch (type) {
+      case 'AWB_NUMBER': return 'Airway Bill Copy';
+      case 'COMMERCIAL_INVOICE': return 'Commercial Invoice';
+      case 'PACKING_LIST': return 'Packing List';
+      case 'ID_PROOF': return 'ID Proof';
+      case 'CARGO_DECLARATION': return 'Cargo Declaration';
+      default: return type.replace(/_/g, ' ');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-20 text-text-muted">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-blue mx-auto mb-3"></div>
+        Loading compliance records...
+      </div>
+    );
+  }
+
+  if (error && !shipment) {
+    return (
+      <div className="space-y-4">
+        <button onClick={onBack} className="inline-flex items-center gap-1 text-sm font-semibold text-text-muted hover:text-white transition-colors duration-150">
+          <ArrowLeft size={16} /> Back to Registry
+        </button>
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-sm text-red-400">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
+  if (!shipment) return null;
+
+  const totalDocs = shipment.shipment_documents || [];
+  const submittedDocsCount = totalDocs.filter(d => d.file_reference !== null && d.file_reference !== '').length;
+  const docProgress = Math.round((submittedDocsCount / 5) * 100);
+
+  return (
+    <div className="space-y-6">
+      
+      {/* Header Back & Terminal Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <button 
+          onClick={() => navigate('/')}
+          className="inline-flex items-center gap-1 text-sm font-semibold text-text-muted hover:text-white transition-colors duration-150"
+        >
+          <ArrowLeft size={16} /> Back to Registry
+        </button>
+
+        {activePortal !== 'exporter' && shipment.status !== 'COMPLETED' && shipment.status !== 'CANCELLED' && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleTerminalStateUpdate('COMPLETED')}
+              className="bg-accent-blue hover:bg-accent-blue-hover text-white px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150"
+            >
+              Mark Completed
+            </button>
+            <button
+              onClick={() => handleTerminalStateUpdate('CANCELLED')}
+              className="bg-transparent hover:bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150"
+            >
+              Cancel Shipment
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Warning/Alert Banner if ON_HOLD */}
+      {shipment.status === 'ON_HOLD' && (
+        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl flex items-start gap-3 animate-pulse">
+          <ShieldAlert className="text-red-400 flex-shrink-0 mt-0.5" size={20} />
+          <div>
+            <h4 className="font-bold text-red-400 text-sm">Cargo Custody Hold Triggered</h4>
+            <p className="text-xs text-text-muted mt-0.5 leading-relaxed">
+              This shipment was placed on hold due to rejected document verification audits. Please review the checklist on the right, correct the errors, and submit fresh files.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Layout Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Left Column: Shipment & Customer info */}
+        <div className="lg:col-span-5 space-y-6">
+          
+          {/* Shipment Parameters */}
+          <div className="bg-bg-card border border-[#222f47] rounded-2xl p-6">
+            <h2 className="text-xs font-header font-bold text-text-muted flex items-center gap-2 mb-4 border-b border-[#222f47] pb-3 uppercase tracking-wider">
+              Consignment Parameters
+            </h2>
+
+            <div className="space-y-4 text-sm">
+              <div>
+                <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">AWB Number</span>
+                <span className="font-header font-bold text-xl text-white tracking-wide">{shipment.awb_number}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Origin airport</span>
+                  <strong className="text-white uppercase font-bold text-sm">{shipment.origin_airport}</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Destination airport</span>
+                  <strong className="text-white uppercase font-bold text-sm">{shipment.destination_airport}</strong>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Pickup City</span>
+                  <span className="text-white font-medium">{shipment.pickup_city || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Cargo Content</span>
+                  <span className="text-white font-medium">{shipment.cargo_type || 'N/A'}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Gross Weight</span>
+                  <span className="text-white font-medium">{shipment.actual_weight} kg</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Volumetric Weight</span>
+                  <span className="text-white font-medium">{shipment.volumetric_weight} kg</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Chargeable weight</span>
+                  <strong className="text-emerald-400 font-bold text-base">{shipment.chargeable_weight} kg</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Owner assigned</span>
+                  <span className="text-accent-blue font-semibold">{shipment.assigned_owner || 'Queue'}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 border-t border-[#222f47] pt-4">
+                <div>
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block mb-1.5">Cargo Status Badge</span>
+                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${
+                    shipment.status === 'READY_FOR_HANDOVER' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                    shipment.status === 'ON_HOLD' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                    shipment.status === 'COMPLETED' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                    shipment.status === 'CANCELLED' ? 'bg-gray-500/10 text-gray-400 border border-gray-500/20' :
+                    'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                  }`}>
+                    {shipment.status}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block mb-1.5">Payment Status</span>
+                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${
+                    shipment.payment_status === 'PAID' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                    'bg-red-500/10 text-red-400 border border-red-500/20 animate-pulse'
+                  }`}>
+                    {shipment.payment_status || 'UNPAID'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* WhatsApp Alerts Panel */}
+          {activePortal !== 'exporter' && (
+            <div className="bg-bg-card border border-[#222f47] rounded-2xl p-6 space-y-4">
+              <h2 className="text-xs font-header font-bold text-text-muted flex items-center gap-2 border-b border-[#222f47] pb-3 uppercase tracking-wider">
+                <MessageSquare className="text-accent-blue" size={15} /> WhatsApp Alerts Dispatcher
+              </h2>
+
+              <div className="space-y-3.5 text-xs">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Customer Phone</span>
+                  <p className="text-white font-bold">{shipment.customer?.company_name || 'Walk-in Exporter'} ({shipment.customer?.phone || 'No phone registered'})</p>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Message Template</span>
+                  <select
+                    value={alertTemplate}
+                    onChange={(e) => setAlertTemplate(e.target.value)}
+                    className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-3 py-2 text-white outline-none focus:border-accent-blue"
+                  >
+                    <option value="rejection">Warehouse / Intake Rejection Notice</option>
+                    <option value="verify_docs">Verify Documents Pending Alert</option>
+                    <option value="handover_ready">Approved & Handover (Send to Airport)</option>
+                    <option value="payment_pending">Intake Payment Pending Alert</option>
+                    <option value="completed">Shipment Completed Notification</option>
+                    <option value="general">General Operations Update</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Message Body Preview</span>
+                  <textarea
+                    value={customMsg}
+                    onChange={(e) => setCustomMsg(e.target.value)}
+                    rows={4}
+                    className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-3.5 py-2.5 text-white placeholder-text-muted outline-none focus:border-accent-blue resize-none"
+                  ></textarea>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleDispatchWhatsApp}
+                  disabled={!shipment.customer?.phone}
+                  className="w-full bg-[#25d366] hover:bg-[#20ba5a] text-black font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                >
+                  <Send size={14} /> Send WhatsApp Alert
+                </button>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* Right Column: Document checklist & Timeline logs */}
+        <div className="lg:col-span-7 space-y-6">
+          
+          {/* Document Checklist Repository */}
+          <div className="bg-bg-card border border-[#222f47] rounded-2xl p-6">
+            <h2 className="text-xs font-header font-bold text-text-muted flex items-center gap-2 mb-4 border-b border-[#222f47] pb-3 uppercase tracking-wider">
+              Document Checklist Repository
+            </h2>
+
+            {/* Checklist Progress */}
+            <div className="space-y-2 mb-6">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-semibold text-text-muted">Compliance Audits Rate</span>
+                <span className="font-bold text-accent-blue">{docProgress}% Complete</span>
+              </div>
+              <div className="w-full bg-[#0b0f19] h-2 rounded-full overflow-hidden border border-[#222f47]">
+                <div 
+                  className={`h-full rounded-full transition-all duration-500 ${docProgress === 100 ? 'bg-emerald-500' : 'bg-accent-blue'}`}
+                  style={{ width: `${docProgress}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Rejection Form Box inline */}
+            {rejectingDocId && (
+              <form onSubmit={handleRejectDocSubmit} className="bg-red-500/5 border border-red-500/20 p-4 rounded-xl mb-6 space-y-3 animate-fade-in">
+                <h4 className="text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldAlert size={14} /> Reject Document Audit Notice
+                </h4>
+                <textarea
+                  placeholder="Explain why this document was rejected (Required)..."
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  rows={2}
+                  className="w-full bg-[#0b0f19] border border-red-500/20 rounded-lg p-2.5 text-xs text-white outline-none focus:border-red-500"
+                  required
+                ></textarea>
+                <div className="flex gap-2">
+                  <button type="submit" className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold">
+                    Log Rejection
+                  </button>
+                  <button type="button" onClick={() => setRejectingDocId(null)} className="bg-transparent hover:bg-white/5 border border-[#222f47] px-3 py-1.5 rounded-lg text-[10px] font-bold text-text-muted">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Documents Slots */}
+            <div className="space-y-4">
+              {totalDocs.map((doc) => {
+                const isUploaded = doc.file_reference !== null && doc.file_reference !== '';
+                return (
+                  <div 
+                    key={doc.id}
+                    className={`flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-xl gap-4 ${
+                      doc.status === 'APPROVED' ? 'border-emerald-500/20 bg-emerald-500/5' :
+                      doc.status === 'REJECTED' ? 'border-red-500/20 bg-red-500/5' :
+                      'border-[#222f47] bg-[#0b0f19]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                        doc.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400' :
+                        doc.status === 'REJECTED' ? 'bg-red-500/10 text-red-400' :
+                        'bg-[#151d30] text-text-muted'
+                      }`}>
+                        <FileText size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                          {formatDocLabel(doc.document_type)}
+                          <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
+                            doc.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400' :
+                            doc.status === 'REJECTED' ? 'bg-red-500/10 text-red-400' :
+                            'bg-amber-500/10 text-amber-400'
+                          }`}>
+                            {doc.status}
+                          </span>
+                        </h4>
+                        <p className="text-[10px] text-text-muted mt-0.5 leading-normal">
+                          {isUploaded ? 'File copy uploaded.' : 'Recheck pending upload.'}
+                          {doc.status === 'REJECTED' && doc.rejection_reason && (
+                            <span className="block text-red-400 font-medium mt-1 font-mono text-[9px]">Reason: {doc.rejection_reason}</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end md:self-auto">
+                      {isUploaded ? (
+                        <>
+                          <a 
+                            href={doc.signedViewUrl || doc.file_reference} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="bg-[#151d30] border border-[#222f47] hover:bg-[#222f47] text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                          >
+                            <ExternalLink size={12} /> View
+                          </a>
+
+                          {activePortal !== 'exporter' && (
+                            <>
+                              {doc.status !== 'APPROVED' && (
+                                <button
+                                  onClick={() => handleApproveDoc(doc.id, doc.document_type)}
+                                  className="bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/10 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+                                >
+                                  Approve
+                                </button>
+                              )}
+                              {doc.status !== 'REJECTED' && (
+                                <button
+                                  onClick={() => {
+                                    setRejectingDocId(doc.id);
+                                    setRejectionReason('');
+                                  }}
+                                  className="bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/10 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+                                >
+                                  Reject
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {activePortal !== 'exporter' ? (
+                            <div className="relative">
+                              <input 
+                                type="file"
+                                accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                                disabled={uploadingDocId !== null}
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    handleFileUpload(doc.id, e.target.files[0], doc.document_type);
+                                  }
+                                }}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                              />
+                              <button
+                                disabled={uploadingDocId !== null}
+                                className="bg-accent-blue hover:bg-accent-blue-hover text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
+                              >
+                                {uploadingDocId === doc.id ? (
+                                  <span className="animate-spin w-3 h-3 border-2 border-white border-t-transparent rounded-full"></span>
+                                ) : (
+                                  <Upload size={12} />
+                                )}
+                                Upload
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-[9px] text-red-400 font-bold uppercase tracking-wider px-2 py-1 bg-red-500/10 rounded-md border border-red-500/20">
+                              Missing file
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Outbound Alerts Notification Logs (WhatsApp log dashboard) */}
+          {whatsappLogs.length > 0 && (
+            <div className="bg-bg-card border border-[#222f47] rounded-2xl p-6">
+              <h2 className="text-xs font-header font-bold text-text-muted flex items-center gap-2 mb-4 border-b border-[#222f47] pb-3 uppercase tracking-wider">
+                <Send className="text-emerald-400" size={14} /> WhatsApp Dispatch Trail
+              </h2>
+              <div className="space-y-3 max-h-[180px] overflow-y-auto pr-1">
+                {whatsappLogs.map((log) => (
+                  <div key={log.id} className="bg-[#0b0f19] border border-[#222f47] p-3 rounded-xl text-xs space-y-1.5 animate-fade-in">
+                    <div className="flex justify-between items-center text-[8px] font-bold text-text-muted uppercase tracking-wider">
+                      <span>Template: {log.template_used}</span>
+                      <span>{new Date(log.timestamp).toLocaleString()}</span>
+                    </div>
+                    <p className="text-text-muted leading-tight font-serif italic text-[11px]">"{log.message_content}"</p>
+                    <p className="text-[9px] text-text-muted">Recipient: <strong className="text-white font-medium">{log.customer_name} ({log.recipient_phone})</strong></p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Audit Timeline */}
+          <div className="bg-bg-card border border-[#222f47] rounded-2xl p-6">
+            <h2 className="text-xs font-header font-bold text-text-muted flex items-center gap-2 mb-6 border-b border-[#222f47] pb-3 uppercase tracking-wider">
+              AWB Compliance Audit Trail
+            </h2>
+
+            <div className="relative pl-6 border-l border-[#222f47] space-y-6">
+              {shipment.status_history?.length === 0 ? (
+                <div className="text-xs text-text-muted text-center py-4">No audit events generated.</div>
+              ) : (
+                shipment.status_history?.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).map((log) => (
+                  <div key={log.id} className="relative animate-fade-in">
+                    <span className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-4 border-[#151d30] ${
+                      log.action_taken.includes('APPROVED') || log.action_taken.includes('COMPLETED') ? 'bg-emerald-500' :
+                      log.action_taken.includes('Uploaded') ? 'bg-accent-blue' :
+                      log.action_taken.includes('REJECTED') || log.action_taken.includes('ON_HOLD') ? 'bg-red-500' : 'bg-amber-500'
+                    }`}></span>
+
+                    <div className="bg-[#0b0f19] border border-[#222f47] rounded-xl p-3.5 space-y-1 text-xs">
+                      <div className="flex justify-between items-center text-[9px] text-text-muted font-bold tracking-wider uppercase">
+                        <span>{log.action_taken}</span>
+                        <span>{new Date(log.created_at).toLocaleString()}</span>
+                      </div>
+                      <h4 className="font-bold text-white text-xs mt-1">Performed by: <strong className="text-emerald-400">{log.action_by}</strong></h4>
+                      {log.notes && <p className="text-[10px] text-text-muted leading-relaxed mt-0.5">{log.notes}</p>}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
