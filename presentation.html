@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWB-DT Final Presentation: Complete System Demo & Project Closure</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    /* Color Palette - Premium Warm/Cool Slate hybrid */
+    --bg-primary-dark: #0f172a;
+    --bg-secondary-dark: #1e293b;
+    --text-primary-dark: #f8fafc;
+    --text-secondary-dark: #94a3b8;
+    --accent-dark: #f43f5e;
+    --accent-light-dark: #ffe4e6;
+    --border-dark: #334155;
+    
+    --bg-primary-light: #f8fafc;
+    --bg-secondary-light: #ffffff;
+    --text-primary-light: #0f172a;
+    --text-secondary-light: #475569;
+    --accent-light: #e11d48;
+    --accent-light-light: #fff1f2;
+    --border-light: #e2e8f0;
+
+    --font-serif: 'Playfair Display', Georgia, serif;
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    --transition-speed: 0.4s;
+    --transition-curve: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Themes */
+  body.dark {
+    --bg-primary: var(--bg-primary-dark);
+    --bg-secondary: var(--bg-secondary-dark);
+    --text-primary: var(--text-primary-dark);
+    --text-secondary: var(--text-secondary-dark);
+    --accent: var(--accent-dark);
+    --accent-bg: #e11d4820;
+    --border: var(--border-dark);
+    --card-bg: rgba(30, 41, 59, 0.7);
+    --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    --grid-bg: radial-gradient(rgba(51, 65, 85, 0.15) 1px, transparent 0);
+  }
+
+  body.light {
+    --bg-primary: var(--bg-primary-light);
+    --bg-secondary: var(--bg-secondary-light);
+    --text-primary: var(--text-primary-light);
+    --text-secondary: var(--text-secondary-light);
+    --accent: var(--accent-light);
+    --accent-bg: var(--accent-light-light);
+    --border: var(--border-light);
+    --card-bg: rgba(255, 255, 255, 0.85);
+    --shadow: 0 8px 32px 0 rgba(148, 163, 184, 0.15);
+    --grid-bg: radial-gradient(rgba(226, 232, 240, 0.8) 1px, transparent 0);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    transition: background-color 0.5s ease, color 0.5s ease;
+  }
+
+  /* Background Grid Effect */
+  .grid-pattern {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: var(--grid-bg);
+    background-size: 24px 24px;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.8;
+  }
+
+  /* MAIN WORKSPACE */
+  .app-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    position: relative;
+  }
+
+  /* SIDEBAR NAVIGATION */
+  .sidebar {
+    width: 280px;
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+    transition: width var(--transition-speed) var(--transition-curve), background-color 0.5s ease, border-color 0.5s ease;
+  }
+
+  .sidebar.collapsed {
+    width: 0;
+    overflow: hidden;
+    border-right: none;
+  }
+
+  .sidebar-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-header h2 {
+    font-family: var(--font-serif);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .sidebar-header p {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-top: 4px;
+  }
+
+  .slide-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 12px;
+    list-style: none;
+  }
+
+  .slide-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    margin-bottom: 4px;
+    transition: all 0.2s ease;
+  }
+
+  .slide-item:hover {
+    background-color: var(--accent-bg);
+    color: var(--accent);
+  }
+
+  .slide-item.active {
+    background-color: var(--accent);
+    color: #fff;
+    font-weight: 500;
+  }
+
+  .slide-item .num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    margin-right: 10px;
+    opacity: 0.7;
+    width: 20px;
+  }
+
+  .sidebar-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-secondary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* PRESENTATION STAGE */
+  .presentation-stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+  }
+
+  /* TOP CONTROLS */
+  .top-navbar {
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    border-bottom: 1px solid var(--border);
+    background-color: var(--bg-secondary);
+    transition: background-color 0.5s ease, border-color 0.5s ease;
+  }
+
+  .nav-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+  }
+
+  .btn:hover {
+    background-color: var(--accent-bg);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .btn.primary {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .btn.primary:hover {
+    background-color: #be123c;
+    color: #fff;
+  }
+
+  .btn-icon {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+
+  /* SLIDE CONTAINER & SCALING */
+  .slide-viewport {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Aspect-ratio locked presentation slide card */
+  .slide-container {
+    width: 1200px;
+    height: 750px;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(16px);
+    display: flex;
+    flex-direction: column;
+    padding: 48px;
+    position: relative;
+    overflow: hidden;
+    transition: opacity 0.3s ease, transform 0.3s ease, background-color 0.5s ease, border-color 0.5s ease;
+  }
+
+  /* Transitions */
+  .slide-container.fade-out {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  .slide-container.fade-in {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  /* SLIDE TYPOGRAPHY & LAYOUTS */
+  .slide-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .slide-title {
+    font-family: var(--font-serif);
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.25;
+    margin-bottom: 24px;
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .slide-title span.duration {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    background-color: var(--accent-bg);
+    color: var(--accent);
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0;
+  }
+
+  .slide-content {
+    flex: 1;
+    overflow-y: auto;
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--text-primary);
+  }
+
+  /* Slide Grids & Elements */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    height: 100%;
+  }
+
+  .three-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+  }
+
+  .card-bullet {
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    padding: 16px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  body.light .card-bullet {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+
+  .card-bullet:hover {
+    transform: translateX(4px);
+    border-color: var(--accent);
+  }
+
+  .card-bullet h4 {
+    font-size: 14.5px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-bullet h4 span {
+    background-color: var(--accent);
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-family: var(--font-mono);
+  }
+
+  .card-bullet p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* CODE BOX */
+  .code-container {
+    background-color: #0b0f19;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    line-height: 1.5;
+    padding: 16px;
+    overflow: auto;
+    color: #e2e8f0;
+    height: 100%;
+    max-height: 380px;
+  }
+
+  /* TIMELINE SEGMENTS */
+  .slide-timeline {
+    display: flex;
+    width: 100%;
+    margin-bottom: 24px;
+    border-radius: 6px;
+    overflow: hidden;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-align: center;
+  }
+
+  .slide-timeline .seg {
+    padding: 8px 4px;
+    color: #fff;
+    font-weight: 500;
+  }
+
+  /* VERIFICATION TABLE */
+  .slide-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .slide-table th {
+    padding: 8px 12px;
+    background-color: var(--bg-secondary);
+    border-bottom: 2px solid var(--border);
+    text-align: left;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  .slide-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  .slide-table tr:nth-child(even) {
+    background-color: rgba(0, 0, 0, 0.015);
+  }
+
+  body.dark .slide-table tr:nth-child(even) {
+    background-color: rgba(255, 255, 255, 0.015);
+  }
+
+  .badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
+  }
+
+  .badge.pass { background-color: #d1fae5; color: #065f46; }
+  .badge.alert { background-color: #fee2e2; color: #991b1b; }
+  .badge.wip { background-color: #fef3c7; color: #92400e; }
+  .badge.role { background-color: #e0f2fe; color: #075985; }
+
+  /* BOTTOM CONTROLS & PROGRESS */
+  .bottom-navbar {
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    border-top: 1px solid var(--border);
+    background-color: var(--bg-secondary);
+    z-index: 10;
+    transition: background-color 0.5s ease, border-color 0.5s ease;
+  }
+
+  .progress-track {
+    flex: 1;
+    margin: 0 40px;
+    height: 4px;
+    background-color: var(--border);
+    border-radius: 2px;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background-color: var(--accent);
+    width: 0%;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  /* DIAGRAM STYLING */
+  .diagram-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.02);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    position: relative;
+  }
+  
+  body.dark .diagram-container {
+    background-color: rgba(255, 255, 255, 0.01);
+  }
+
+  /* PRINT STYLE SHEETS */
+  @media print {
+    body {
+      background: white !important;
+      color: black !important;
+      overflow: visible !important;
+      height: auto !important;
+      width: auto !important;
+    }
+
+    .grid-pattern, .sidebar, .top-navbar, .bottom-navbar, .btn {
+      display: none !important;
+    }
+
+    .app-container {
+      display: block !important;
+    }
+
+    .presentation-stage {
+      display: block !important;
+      height: auto !important;
+    }
+
+    .slide-viewport {
+      padding: 0 !important;
+      display: block !important;
+      overflow: visible !important;
+    }
+
+    .slide-container {
+      width: 100% !important;
+      height: 100vh !important; /* Forces landscape print fit */
+      page-break-after: always !important;
+      break-after: page !important;
+      border: none !important;
+      box-shadow: none !important;
+      background: transparent !important;
+      padding: 40px !important;
+      transform: none !important;
+      opacity: 1 !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    .code-container {
+      max-height: none !important;
+      overflow: visible !important;
+      background: #fafafa !important;
+      color: #000 !important;
+      border: 1px solid #ddd !important;
+    }
+  }
+</style>
+</head>
+<body class="dark">
+
+<div class="grid-pattern"></div>
+
+<div class="app-container">
+
+  <!-- SIDEBAR NAVIGATION -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2 id="project-main-title">AWB-DT Review</h2>
+      <p>Final Presentation</p>
+    </div>
+    <ul class="slide-list" id="slide-list">
+      <!-- Generated dynamically -->
+    </ul>
+    <div class="sidebar-footer">
+      <span>Press [?] for help</span>
+      <button class="btn btn-icon" id="theme-toggle" title="Toggle Theme">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- PRESENTATION STAGE -->
+  <main class="presentation-stage">
+    
+    <!-- TOP NAVIGATION BAR -->
+    <nav class="top-navbar">
+      <div class="nav-left">
+        <button class="btn" id="sidebar-toggle" title="Toggle Sidebar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          Index
+        </button>
+        <span style="font-size: 13px; font-weight: 500; opacity: 0.8;" id="nav-company-name">ORBEM Solutions Private Limited</span>
+      </div>
+      <div class="nav-right">
+        <button class="btn" onclick="window.print()" title="Print Slides to PDF">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
+          Export PDF
+        </button>
+        <button class="btn primary" id="fullscreen-toggle">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          Fullscreen
+        </button>
+      </div>
+    </nav>
+
+    <!-- SLIDE VIEWPORT -->
+    <div class="slide-viewport">
+      <div class="slide-container fade-in" id="slide-card">
+        <!-- Slide content dynamically loaded -->
+      </div>
+    </div>
+
+    <!-- BOTTOM PROGRESS BAR -->
+    <div class="bottom-navbar">
+      <button class="btn" id="prev-btn" title="Previous Slide [Left Arrow / Backspace]">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+        Prev
+      </button>
+
+      <div class="progress-track" id="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+
+      <button class="btn" id="next-btn" title="Next Slide [Right Arrow / Space]">
+        Next
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // Slide database definition containing the 16 slides
+  const SLIDES = [
+    {
+      label: "Slide 01",
+      title: "Title Slide",
+      duration: "1 min",
+      content: `
+        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; text-align:center;">
+          <span style="font-size:12px; font-weight:700; color:var(--accent); letter-spacing:3px; text-transform:uppercase; margin-bottom:16px;">Final Internship Review</span>
+          <h1 style="font-family:var(--font-serif); font-size:42px; font-weight:700; line-height:1.2; margin-bottom:20px; max-width:800px;">
+            Airway Bill & Document Tracker (AWB-DT)
+          </h1>
+          <p style="font-size:18px; color:var(--text-secondary); max-width:600px; margin-bottom:48px;">
+            Secure cargo control tower application designed to automate document compliance auditing.
+          </p>
+          <div style="border-top:1px solid var(--border); padding-top:24px; display:grid; grid-template-columns:2fr 1fr; gap:48px; text-align:left; width:100%; max-width:800px; margin:0 auto;">
+            <div>
+              <span style="font-size:11px; text-transform:uppercase; color:var(--text-secondary); letter-spacing:1px; display:block; margin-bottom:10px;">Presented By</span>
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+                <div>
+                  <strong style="font-size:14px; display:block; color:var(--text-primary);">Akshaya</strong>
+                  <span style="font-size:11px; color:var(--text-secondary);">Frontend Lead</span>
+                </div>
+                <div>
+                  <strong style="font-size:14px; display:block; color:var(--text-primary);">Rasul Khan</strong>
+                  <span style="font-size:11px; color:var(--text-secondary);">Backend Lead</span>
+                </div>
+                <div>
+                  <strong style="font-size:14px; display:block; color:var(--text-primary);">Jason</strong>
+                  <span style="font-size:11px; color:var(--text-secondary);">QA / DevOps Lead</span>
+                </div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <span style="font-size:11px; text-transform:uppercase; color:var(--text-secondary); letter-spacing:1px; display:block; margin-bottom:10px;">Organization</span>
+              <strong style="font-size:14px; color:var(--text-primary); display:block;">ORBEM Solutions</strong>
+              <span style="font-size:11px; color:var(--text-secondary);">Private Limited</span>
+            </div>
+          </div>
+          <div style="margin-top:40px; font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);">
+            Final Review &bull; 29 June 2026
+          </div>
+        </div>
+      `
+    },
+    {
+      label: "Slide 02",
+      title: "Journey Recap",
+      duration: "1 min",
+      content: `
+        <div style="display:flex; flex-direction:column; justify-content:center; height:100%;">
+          <p style="font-size:16px; margin-bottom:24px; color:var(--text-secondary);">
+            Our path from cargo bottleneck detection to a high-speed serverless auditing control tower.
+          </p>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px;">
+            <div class="card-bullet" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between; height:240px;">
+              <div>
+                <h4 style="color:var(--accent);"><span>1</span> Problem Identified</h4>
+                <p style="margin-top:10px; font-size:13.5px; line-height:1.6;">
+                  Manual compliance checking of airway bills (AWB) and trade declarations caused severe airport gate bottlenecks. Delays in checking the mandatory 5 files created a lack of end-to-end visibility for exporters.
+                </p>
+              </div>
+              <div style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--text-secondary);">Cargo Bottlenecks</div>
+            </div>
+            <div class="card-bullet" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between; height:240px;">
+              <div>
+                <h4 style="color:var(--accent);"><span>2</span> Research Conducted</h4>
+                <p style="margin-top:10px; font-size:13.5px; line-height:1.6;">
+                  Mapped requirements for cargo logistics roles. Designed a cloud notification path and weight calculator, establishing that a complete system requires automated validation hooks and direct storage file vault links.
+                </p>
+              </div>
+              <div style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--text-secondary);">Role & Data Flow Analysis</div>
+            </div>
+            <div class="card-bullet" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between; height:240px;">
+              <div>
+                <h4 style="color:var(--accent);"><span>3</span> System Designed</h4>
+                <p style="margin-top:10px; font-size:13.5px; line-height:1.6;">
+                  Built a serverless React application connected to Supabase PostgreSQL triggers, Storage buckets, Deno edge function workers, and Resend mail APIs for instantaneous operations tracking.
+                </p>
+              </div>
+              <div style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--text-secondary);">React + Supabase + Resend</div>
+            </div>
+          </div>
+        </div>
+      `
+    },
+    {
+      label: "Slide 03",
+      title: "Final System Overview",
+      duration: "1 min",
+      content: `
+        <div class="two-col">
+          <div>
+            <h3 style="font-family:var(--font-serif); font-size:22px; margin-bottom:14px;">The Complete AWB-DT System</h3>
+            <p style="font-size:14px; color:var(--text-secondary); margin-bottom:16px; line-height:1.6;">
+              A fully functional control tower that simplifies AWB documentation checks. Operators sign in, intake cargo parameters, upload files directly, and evaluate checklists. Behind the scenes, triggers update shipment status and request email deliveries immediately.
+            </p>
+            <div class="card-bullet" style="background-color:var(--accent-bg); border-color:var(--accent);">
+              <h4 style="color:var(--accent); font-family:var(--font-serif); font-size:15px; margin-bottom:4px;">Outcome Statement</h4>
+              <p style="font-size:13px; font-style:italic; line-height:1.5; color:var(--text-primary);">
+                "Delivered an automated compliance dashboard auditing AWB documentation sets with zero-code local execution fallback, full PostgreSQL database normalization, real file uploading, and status-based Resend notification dispatch."
+              </p>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; justify-content:center;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+              <div style="border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center;">
+                <span style="font-family:var(--font-serif); font-size:36px; font-weight:700; color:var(--accent); display:block; line-height:1;">8</span>
+                <span style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--text-secondary);">Core Features</span>
+              </div>
+              <div style="border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center;">
+                <span style="font-family:var(--font-serif); font-size:36px; font-weight:700; color:var(--accent); display:block; line-height:1;">6</span>
+                <span style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--text-secondary);">Database Tables</span>
+              </div>
+              <div style="border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center;">
+                <span style="font-family:var(--font-serif); font-size:36px; font-weight:700; color:var(--accent); display:block; line-height:1;">22</span>
+                <span style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--text-secondary);">Self-Test Items Passed</span>
+              </div>
+              <div style="border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center;">
+                <span style="font-family:var(--font-serif); font-size:36px; font-weight:700; color:var(--accent); display:block; line-height:1;">0</span>
+                <span style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--text-secondary);">Configuration Runtime</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+    },
+    {
+      label: "Slide 04",
+      title: "Live System Demonstration — Portal Gateway",
+      duration: "1 min",
+      content: `
+        <div class="two-col">
+          <div>
+            <h3 style="font-family:var(--font-serif); font-size:20px; margin-bottom:12px;">Multi-Role Gateway Selection Screen</h3>
+            <p style="font-size:13.5px; color:var(--text-secondary); margin-bottom:16px; line-height:1.6;">
+              At startup, users are presented with a gateway interface where they select their role. Each role opens a tailored view of the codebase, enforcing operational boundaries.
+            </p>
+            <div class="card-bullet">
+              <h4 style="font-size:14px;"><span class="badge role">Admin</span> Administrator overrides</h4>
+              <p>Unrestricted access to edit weights, force change statuses, delete records, and inspect global system logs.</p>
+            </div>
+            <div class="card-bullet">
+              <h4 style="font-size:14px;"><span class="badge role">Staff</span> Employees (Akshaya, Rasul khan, Jason)</h4>
+              <p>Register shipments, upload compliance files, approve checklists. Restrained from permanent deletions or final clearance.</p>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; justify-content:center; gap:12px; background-color:rgba(0,0,0,0.05); border:1px solid var(--border); border-radius:12px; padding:24px;">
+            <div style="border:2px dashed var(--accent); border-radius:8px; padding:16px; text-align:center; background-color:var(--bg-secondary);">
+              <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--accent); display:block; margin-bottom:8px;">Portal Access Logic</span>
+              <div style="font-family:var(--font-mono); font-size:12px; line-height:1.5; color:var(--text-secondary); text-align:left;">
+                sessionStorage.getItem('activeRole')<br>
+                &bull; Admin &rarr; admin privileges<br>
+                &bull; Staff &rarr; staff operations panel<br>
+                &bull; Guest Exporter &rarr; AWB lookup gateway
+              </div>
+            </div>
+            <div class="card-bullet" style="margin-bottom:0;">
+              <h4 style="font-size:14px;"><span class="badge role">Guest</span> Exporter / Customer Search</h4>
+              <p>A simple search input using client email and AWB number, bypassing login screens to safely track cargo.</p>
+            </div>
+          </div>
+        </div>
+      `
+    },
+    {
+      label: "Slide 05",
+      title: "Live System Demonstration — Admin Control Center",
+      duration: "1 min",
+      content: `
+        <div class="two-col">
+          <div style="display:flex; flex-direction:column; justify-content:center;">
+            <h3 style="font-family:var(--font-serif); font-size:22px; margin-bottom:12px;">Admin Control Center Dashboard</h3>
+            <p style="font-size:14px; color:var(--text-secondary); margin-bottom:16px; line-height:1.6;">
+              The administrative overview consolidates system metrics and provides access to override and delete capabilities.
+            </p>
+            <div class="card-bullet">
+              <h4 style="font-size:14px;">Global Stat Cards</h4>
+              <p>Renders real-time aggregate totals: Total Shipments, Pending Documents, Ready for Handover, On Hold, Completed, Priority Flag Count.</p>
+            </div>
+            <div class="card-bullet" style="margin-bottom:0;">
+              <h4 style="font-size:14px;">Bypass Override Tooling</h4>
+              <p>Administrators can force transition status states (e.g. from <code>ON_HOLD</code> directly to <code>COMPLETED</code>) to resolve edge bottlenecks.</p>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; justify-content:center; gap:10px;">
+            <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background-color:var(--bg-secondary);">
+              <span style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--accent); display:block; margin-bottom:8px;">Global Operational Audit Log</span>
+              <div style="font-family:var(--font-mono); font-size:11px; line-height:1.5; color:var(--text-secondary);">
+                [2026-06-28 15:30:11] Akshaya created AWB 157-12345670<br>
+                [2026-06-28 15:31:02] DB Trigger auto-sync status to ON_HOLD<br>
+                [2026-06-28 15:32:00] Admin bypassed checklist AWB 157-12345672<br>
+                [2026-06-28 15:32:15] DB Trigger auto-sync status to COMPLETED
+              </div>
+            </div>
+            <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background-color:var(--bg-secondary);">
+              <span style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--accent); display:block; margin-bottom:8px;">Destructive Deletion Safeguards</span>
+              <p style="font-size:12px; color:var(--text-secondary); line-height:1.4;">
+                Only accounts marked as <code>Administrator</code> have the "Delete Shipment" button rendered in their UI. Click triggers a double-confirm modal dialog before API execution.
+              </p>
+            </div>
+          </div>
+        </div>
+      `
+    },
+    {
+      label: "Slide 06",
+      title: "Live System Demonstration — Staff Operations",
+      duration: "1 min",
+      content: `
+        <div class="two-col">
+          <div>
+            <h3 style="font-family:var(--font-serif); font-size:22px; margin-bottom:12px;">Staff Operations Workspace</h3>
+            <p style="font-size:14px; color:var(--text-secondary); margin-bottom:16px; line-height:1.6;">
+              Designed for documentation executives at ORBEM Solutions. Employees run cargo intakes and approve document checklists.
+            </p>
+            <div class="card-bullet">
+              <h4 style="font-size:14px;">Shipment Intake Registries</h4>
+              <p>Register new cargos: client email, AWB number, Origin/Destination Airports, Cargo Type, Package count, and dimensions.</p>
+            </div>
+            <div class="card-bullet" style="margin-bottom:0;">
+              <h4 style="font-size:14px;">Functional Boundaries</h4>
+              <p>Employees can approve documents and trigger statuses but are blocked from deleting shipments or executing gate clearance on completed shipments.</p>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; justify-content:center; border:1px solid var(--border); border-radius:12px; padding:24px; background-color:var(--bg-secondary);">
+            <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--accent); display:block; margin-bottom:12px; text-align:center;">Staff Intake Verification Flow</span>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="background-color:var(--bg-primary); padding:10px; border-radius:6px; border-left:4px solid var(--accent); font-size:12px;">
+                <strong>Step 1:</strong> Enter Shipment Parameters & Dimensions (L x W x H)
+              </div>
+              <div style="background-color:var(--bg-primary); padding:10px; border-radius:6px; border-left:4px solid var(--accent); font-size:12px;">
+                <strong>Step 2:</strong> System Auto-Calculates Volumetric Weight
+              </div>
+              <div style="background-color:var(--bg-primary); padding:10px; border-radius:6px; border-left:4px solid var(--accent); font-size:12px;">
+                <strong>Step 3:</strong> Save to Database (Seeds 5 pending documents)
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+    },
+    {
+      label: "Slide 07",
+      title: "Live System Demonstration — Upload Vault & Calculator",
+      duration: "1-2 min",
+      content: `
+        <div class="two-col">
+          <div>
+            <h3 style="font-family:var(--font-serif); font-size:22px; margin-bottom:12px;">Compliance Upload Vault & Volumetric Math</h3>
+            <p style="font-size:14px; color:var(--text-secondary); margin-bottom:16px; line-height:1.6;">
+              Replaces checkbox verification with a drag-and-drop file upload interface connected directly to the database.
+            </p>
+            <div class="card-bullet">
+              <h4 style="font-size:14px;">Supabase Storage Vault</h4>
+              <p>PDF/Image compliance documents save to private <code>shipment-documents</code> buckets. Retrieval generates signed URLs with a 60-second expiration for safety.</p>
+            </div>
+            <div class="card-bullet" style="margin-bottom:0;">
+              <h4 style="font-size:14px;">Chargeable Weight Calculation</h4>
+              <p>Ensures correct billing parameters. Compare cargo actual weight and volumetric weight, charging the higher value.</p>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; justify-content:center; gap:16px;">
+            <div style="border:1px solid var(--border); border-radius:10px; padding:20px; background-color:var(--bg-secondary); text-align:center;">
+              <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--accent); display:block; margin-bottom:10px;">Volumetric Cargo Math Formula</span>
+              <div style="font-family:var(--font-mono); font-size:16px; font-weight:700; color:var(--text-primary); margin-bottom:8px;">
+                Volumetric Weight = (L * W * H) / 6000
+              </div>
+              <div style="font-family:var(--font-mono); font-size:14px; color:var(--accent);">
+                Chargeable Weight = Max(Actual, Volumetric)
+              </div>
+            </div>
+            <div style="background-color:rgba(0,0,0,0.05); border:1px solid var(--border); border-radius:10px; padding:16px; font-size:12px; color:var(--text-secondary); line-height:1.5;">
+              <strong>Checklist Document Categories:</strong>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; font-family:var(--font-mono); font-size:11px;">
+                <div>1. AWB Number</div>
+                <div>2. Commercial Invoice</div>
+                <div>3. Packing List</div>
+                <div>4. ID Proof</div>
+                <div style="grid-column: span 2;">5. Cargo Declaration</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+    },
+    {
+      label: "Slide 08",
+      title: "Live System Demonstration — Triggers & Alerts",
+      duration: "1 min",
+      content: `
+        <div class="two-col">
+          <div>
+            <h3 style="font-family:var(--font-serif); font-size:22px; margin-bottom:12px;">SQL DB Triggers & Resend Email Alerts</h3>
+            <p style="font-size:14px; color:var(--text-secondary); margin-bottom:16px; line-height:1.6;">
+              Ensures system state synchronization and keeps customers informed of status changes.
+            </p>
+            <div class="card-bullet">
+              <h4 style="font-size:14px;">SQL Database Status Sync Triggers</h4>
+              <p>Whenever a document status transitions to <code>APPROVED</code> or <code>REJECTED</code>, SQL triggers count the files. Reaching 5 approved files auto-promotes status to <code>READY_FOR_HANDOVER</code>.</p>
+            </div>
+            <div class="card-bullet" style="margin-bottom:0;">
+              <h4 style="font-size:14px;">Resend Email Notifications</h4>
+              <p>Edge functions dispatch transaction updates immediately on: new registration, hold delays, and cargo completion.</p>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; justify-content:center; gap:12px;">
+            <div style="border:1px solid var(--border); border-radius:10px; padding:16px; background-color:var(--bg-secondary);">
+              <span style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--accent); display:block; margin-bottom:8px;">Email Audit Trail Log</span>
+              <p style="font-size:12.5px; color:var(--text-secondary); margin-bottom:8px; line-height:1.4;">
+                A real-time email dispatch trail renders log files on the detail dashboard to verify deliverability status:
+              </p>
+              <div style="font-family:var(--font-mono); font-size:10.5px; color:var(--text-secondary); line-height:1.4;">
+                AWB 157-12345670 &rarr; Status: PENDING_DOCUMENTS [SENT]<br>
+                AWB 157-12345670 &rarr; Status: ON_HOLD [SENT]<br>
+                AWB 157-12345670 &rarr; Status: READY_FOR_HANDOVER [SENT]
+              </div>
+            </div>
+            <div class="card-bullet" style="margin-bottom:0; background-color:var(--accent-bg); border-color:var(--accent);">
+              <h4 style="font-size:13px; color:var(--accent); margin-bottom:4px;">Rejection Safeguard</h4>
+              <p style="font-size:12px; color:var(--text-primary);">
+                A document rejection requires entering a rejection reason. This puts the shipment <code>ON_HOLD</code> and sends a notification immediately.
+              </p>
+          </div>
+        </div>
+      `
+    },
+    {
+      label: "Slide 09",
+      title: "As-Built Architecture & Data Flow",
+      duration: "2 min",
+      content: `
+        <div class="two-col">
+          <div class="diagram-container" style="padding: 10px;">
+            <svg viewBox="0 0 420 340" width="100%" height="100%" style="font-family:var(--font-sans);">
+              <defs>
+                <marker id="arrow-arch" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)" />
+                </marker>
+              </defs>
+
+              <!-- Layer 1: React Frontend -->
+              <text x="55" y="15" font-size="8" font-weight="700" fill="var(--text-secondary)" text-anchor="middle">Layer 1</text>
+              <text x="55" y="25" font-size="8.5" font-weight="700" fill="var(--text-primary)" text-anchor="middle">React Frontend</text>
+              <rect x="10" y="35" width="90" height="215" rx="8" fill="none" stroke="var(--border)" stroke-dasharray="2 2" stroke-width="1.2" />
+
+              <!-- L1 Sub-elements -->
+              <!-- React UI -->
+              <rect x="20" y="45" width="70" height="45" rx="4" fill="var(--bg-secondary)" stroke="var(--border)" />
+              <!-- Desktop Icon -->
+              <rect x="48" y="52" width="14" height="10" rx="1" fill="none" stroke="var(--accent)" stroke-width="1" />
+              <line x1="52" y1="62" x2="58" y2="62" stroke="var(--accent)" stroke-width="1" />
+              <line x1="55" y1="62" x2="55" y2="65" stroke="var(--accent)" stroke-width="1" />
+              <text x="55" y="80" font-size="7" font-weight="600" fill="var(--text-primary)" text-anchor="middle">React UI</text>
+
+              <!-- Router -->
+              <rect x="20" y="105" width="70" height="45" rx="4" fill="var(--bg-secondary)" stroke="var(--border)" />
+              <!-- Router Icon -->
+              <circle cx="48" cy="120" r="2" fill="var(--accent)" />
+              <circle cx="62" cy="120" r="2" fill="var(--accent)" />
+              <circle cx="55" cy="113" r="2" fill="var(--accent)" />
+              <line x1="48" y1="120" x2="55" y2="113" stroke="var(--accent)" stroke-width="0.8" />
+              <line x1="62" y1="120" x2="55" y2="113" stroke="var(--accent)" stroke-width="0.8" />
+              <text x="55" y="140" font-size="7" font-weight="600" fill="var(--text-primary)" text-anchor="middle">Router</text>
+
+              <!-- SDK -->
+              <rect x="20" y="190" width="70" height="45" rx="4" fill="var(--bg-secondary)" stroke="var(--border)" />
+              <!-- SDK Code Icon -->
+              <text x="55" y="206" font-size="10" font-family="var(--font-mono)" font-weight="700" fill="var(--accent)" text-anchor="middle">&lt;/&gt;</text>
+              <text x="55" y="218" font-size="6.5" font-weight="600" fill="var(--text-primary)" text-anchor="middle">Supabase JS</text>
+              <text x="55" y="226" font-size="6" fill="var(--text-secondary)" text-anchor="middle">Client SDK</text>
+
+
+              <!-- Layer 2: Supabase Cloud -->
+              <text x="200" y="15" font-size="8" font-weight="700" fill="var(--text-secondary)" text-anchor="middle">Layer 2</text>
+              <text x="200" y="25" font-size="8.5" font-weight="700" fill="var(--text-primary)" text-anchor="middle">Supabase Cloud</text>
+              <rect x="155" y="35" width="90" height="215" rx="8" fill="none" stroke="var(--border)" stroke-dasharray="2 2" stroke-width="1.2" />
+
+              <!-- L2 Sub-elements -->
+              <!-- PostgreSQL DB -->
+              <rect x="165" y="45" width="70" height="45" rx="4" fill="var(--bg-secondary)" stroke="var(--border)" />
+              <!-- DB Icon -->
+              <ellipse cx="200" cy="53" rx="7" ry="2" fill="none" stroke="var(--accent)" stroke-width="0.8"/>
+              <path d="M 193 53 A 7 2 0 0 0 207 53" fill="none" stroke="var(--accent)" stroke-width="0.8"/>
+              <path d="M 193 53 L 193 63 A 7 2 0 0 0 207 63 L 207 53" fill="none" stroke="var(--accent)" stroke-width="0.8"/>
+              <path d="M 193 58 A 7 2 0 0 0 207 58" fill="none" stroke="var(--accent)" stroke-width="0.8"/>
+              <path d="M 193 58 L 193 68 A 7 2 0 0 0 207 68 L 207 58" fill="none" stroke="var(--accent)" stroke-width="0.8"/>
+              <text x="200" y="77" font-size="6.5" font-weight="600" fill="var(--text-primary)" text-anchor="middle">PostgreSQL DB</text>
+              <text x="200" y="84" font-size="5.5" fill="var(--text-secondary)" text-anchor="middle">with SQL Triggers</text>
+
+              <!-- Storage -->
+              <rect x="165" y="105" width="70" height="45" rx="4" fill="var(--bg-secondary)" stroke="var(--border)" />
+              <!-- Folder Vault Icon -->
+              <path d="M 190 115 L 196 115 L 199 119 L 210 119 L 210 128 L 190 128 Z" fill="none" stroke="var(--accent)" stroke-width="1"/>
+              <text x="200" y="137" font-size="6.5" font-weight="600" fill="var(--text-primary)" text-anchor="middle">Private Storage</text>
+              <text x="200" y="144" font-size="5.5" fill="var(--text-secondary)" text-anchor="middle">Buckets</text>
+
+              <!-- Edge Functions -->
+              <rect x="165" y="190" width="70" height="45" rx="4" fill="var(--bg-secondary)" stroke="var(--border)" />
+              <!-- Code curly braces Icon -->
+              <text x="200" y="206" font-size="10" font-family="var(--font-mono)" font-weight="700" fill="var(--accent)" text-anchor="middle">{ }</text>
+              <text x="200" y="218" font-size="6.5" font-weight="600" fill="var(--text-primary)" text-anchor="middle">Deno Edge</text>
+              <text x="200" y="226" font-size="6" fill="var(--text-secondary)" text-anchor="middle">Functions</text>
+
+              <!-- Layer 3: Resend REST API -->
+              <text x="345" y="75" font-size="8" font-weight="700" fill="var(--text-secondary)" text-anchor="middle">Layer 3</text>
+              <text x="345" y="85" font-size="8.5" font-weight="700" fill="var(--text-primary)" text-anchor="middle">Resend REST API</text>
+              <rect x="300" y="95" width="90" height="55" rx="8" fill="var(--bg-secondary)" stroke="var(--border)" />
+              <!-- Cloud Icon -->
+              <path d="M 333 120 A 5 5 0 0 1 343 120 A 6 6 0 0 1 354 121 A 4 4 0 0 1 350 128 L 333 128 Z" fill="none" stroke="var(--accent)" stroke-width="1"/>
+              <text x="345" y="138" font-size="7.5" font-weight="600" fill="var(--text-primary)" text-anchor="middle">Resend REST API</text>
+
+              <!-- Customer Inbox -->
+              <rect x="300" y="190" width="90" height="50" rx="8" fill="var(--bg-secondary)" stroke="var(--border)" />
+              <!-- Envelope Icon -->
+              <rect x="338" y="198" width="14" height="10" rx="1" fill="none" stroke="var(--accent)" stroke-width="1" />
+              <path d="M 338 199 L 345 204 L 352 199" fill="none" stroke="var(--accent)" stroke-width="1"/>
+              <text x="345" y="217" font-size="7" font-weight="600" fill="var(--text-primary)" text-anchor="middle">Customer Inbox</text>
+              <text x="345" y="225" font-size="6" fill="var(--text-secondary)" text-anchor="middle">delivers transactional emails</text>
+
+
+              <!-- Connectors & Relationships -->
+              <!-- React UI <--> Postgres DB -->
+              <line x1="100" y1="60" x2="165" y2="60" stroke="var(--accent)" stroke-width="1" marker-end="url(#arrow-arch)" />
+              <line x1="165" y1="70" x2="100" y2="70" stroke="var(--accent)" stroke-width="1" marker-end="url(#arrow-arch)" />
+
+              <!-- Router <--> Postgres DB -->
+              <line x1="100" y1="120" x2="165" y2="120" stroke="var(--accent)" stroke-width="1" marker-end="url(#arrow-arch)" />
+              <line x1="165" y1="130" x2="100" y2="130" stroke="var(--accent)" stroke-width="1" marker-end="url(#arrow-arch)" />
+
+              <!-- SDK <--> Storage Buckets -->
+              <line x1="90" y1="212" x2="165" y2="128" stroke="var(--accent)" stroke-width="1" marker-end="url(#arrow-arch)" />
+
+              <!-- Inside Layer 2: Postgres DB -> Deno Functions -->
+              <line x1="200" y1="90" x2="200" y2="105" stroke="var(--accent)" stroke-width="1" />
+              <line x1="200" y1="150" x2="200" y2="190" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2 2" marker-end="url(#arrow-arch)" />
+              <text x="204" y="172" font-size="5.5" font-family="var(--font-mono)" fill="var(--text-secondary)">triggers</text>
+
+              <!-- Deno Functions -> Resend REST API -->
+              <line x1="235" y1="212" x2="300" y2="128" stroke="var(--accent)" stroke-width="1" marker-end="url(#arrow-arch)" />
+
+              <!-- Resend API -> Inbox -->
+              <line x1="345" y1="150" x2="345" y2="190" stroke="var(--accent)" stroke-width="1" marker-end="url(#arrow-arch)" />
+            </svg>
+          </div>
+          <div>
+            <h3 style="font-family:var(--font-serif); font-size:22px; margin-bottom:14px;">Layer Breakdown</h3>
+            <ul style="font-size:13.5px; color:var(--text-primary); line-height:1.7; list-style-type:none; padding:0;">
+              <li style="margin-bottom:12px;">
+                <strong style="color:var(--accent);">Frontend</strong> &mdash; React (Vite + Tailwind) via Supabase JS Client SDK
+              </li>
+              <li style="margin-bottom:12px;">
+                <strong style="color:var(--accent);">Supabase Cloud</strong> &mdash; PostgreSQL with SQL triggers, private Storage buckets, Deno Edge Functions
+              </li>
+              <li style="margin-bottom:18px;">
+                <strong style="color:var(--accent);">External</strong> &mdash; Resend REST API for transactional email dispatch on status changes
+              </li>
+            </ul>
+            <p style="font-size:12.5px; color:var(--text-secondary); line-height:1.5; font-style:italic;">
+              Edge Functions are invoked by PostgreSQL triggers, decoupling email dispatch from the main request cycle.
+            </p>
+          </div>
+        </div>
+      `
+    },
+    {
+      label: "Slide 10",
+      title: "Normalized PostgreSQL Schema – 6 Tables",
+      duration: "1 min",
+      content: `
+        <div class="two-col">
+          <div style="display:flex; flex-direction:column; justify-content:center;">
+            <p style="font-size:14px; color:var(--text-secondary); margin-bottom:16px; line-height:1.6;">
+              Six normalized tables isolate concerns — shipment documents live in their own rows, preventing redundant data overhead. Foreign keys enforce referential integrity across shipments, customers, and audit tables.
+            </p>
+            <ul style="font-size:13.5px; color:var(--text-primary); line-height:1.8; list-style-type:none; padding-left:0;">
+              <li style="margin-bottom:8px;">
+                <strong style="color:var(--accent);">customers</strong> &mdash; trade entities (EXPORTER, IMPORTER, AGENT, LOGISTICS_PARTNER)
+              </li>
+              <li style="margin-bottom:8px;">
+                <strong style="color:var(--accent);">shipments</strong> &mdash; core cargo records with weight, dimensions, status
+              </li>
+              <li style="margin-bottom:8px;">
+                <strong style="color:var(--accent);">shipment_documents</strong> &mdash; 5-row compliance checklist per shipment
+              </li>
+              <li style="margin-bottom:8px;">
+                <strong style="color:var(--accent);">status_history</strong> &mdash; immutable audit trail of every state change
+              </li>
+              <li style="margin-bottom:8px;">
+                <strong style="color:var(--accent);">alerts</strong> &mdash; document rejection and hold notifications
+              </li>
+              <li style="margin-bottom:8px;">
+                <strong style="color:var(--accent);">notification_log</strong> &mdash; Resend email delivery records
+              </li>
+            </ul>
+          </div>
+          <div class="diagram-container" style="padding: 10px;">
+            <svg viewBox="0 0 400 340" width="100%" height="100%" style="font-family:var(--font-sans);">
+              <defs>
+                <marker id="arrow-db" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)" />
+                </marker>
+              </defs>
+
+              <!-- Table: customers -->
+              <rect x="130" y="10" width="140" height="85" rx="3" fill="var(--bg-secondary)" stroke="var(--border)" stroke-width="1"/>
+              <line x1="130" y1="28" x2="270" y2="28" stroke="var(--border)" stroke-width="1"/>
+              <text x="200" y="21" font-size="8.5" font-weight="700" fill="var(--text-primary)" text-anchor="middle">customers</text>
+              <text x="138" y="40" font-size="7" fill="var(--accent)" font-weight="600">&bull; UUID PK</text>
+              <text x="138" y="49" font-size="7" fill="var(--text-primary)">&bull; name</text>
+              <text x="138" y="58" font-size="7" fill="var(--text-primary)">&bull; type enum</text>
+              <text x="138" y="67" font-size="7" fill="var(--text-primary)">&bull; company_name</text>
+              <text x="138" y="76" font-size="7" fill="var(--text-primary)">&bull; email</text>
+              <text x="138" y="85" font-size="7" fill="var(--text-primary)">&bull; phone</text>
+
+              <!-- Table: shipments -->
+              <rect x="130" y="125" width="140" height="85" rx="3" fill="var(--bg-secondary)" stroke="var(--border)" stroke-width="1"/>
+              <line x1="130" y1="143" x2="270" y2="143" stroke="var(--border)" stroke-width="1"/>
+              <text x="200" y="136" font-size="8.5" font-weight="700" fill="var(--text-primary)" text-anchor="middle">shipments</text>
+              <text x="138" y="155" font-size="7" fill="var(--accent)" font-weight="600">&bull; UUID PK</text>
+              <text x="138" y="164" font-size="7" fill="var(--text-secondary)">&bull; customer_id FK</text>
+              <text x="138" y="173" font-size="7" fill="var(--text-primary)">&bull; awb_number</text>
+              <text x="138" y="182" font-size="7" fill="var(--text-primary)">&bull; weights</text>
+              <text x="138" y="191" font-size="7" fill="var(--text-primary)">&bull; dimensions</text>
+              <text x="138" y="200" font-size="7" fill="var(--text-primary)">&bull; status enums</text>
+
+              <!-- Table: shipment_documents -->
+              <rect x="5" y="250" width="90" height="75" rx="3" fill="var(--bg-secondary)" stroke="var(--border)" stroke-width="1"/>
+              <line x1="5" y1="268" x2="95" y2="268" stroke="var(--border)" stroke-width="1"/>
+              <text x="50" y="261" font-size="7.5" font-weight="700" fill="var(--text-primary)" text-anchor="middle">shipment_documents</text>
+              <text x="11" y="280" font-size="7" fill="var(--accent)" font-weight="600">&bull; UUID PK</text>
+              <text x="11" y="289" font-size="7" fill="var(--text-secondary)">&bull; shipment_id FK</text>
+              <text x="11" y="298" font-size="7" fill="var(--text-primary)">&bull; document_type enum</text>
+              <text x="11" y="307" font-size="7" fill="var(--text-primary)">&bull; status enum</text>
+              <text x="11" y="316" font-size="7" fill="var(--text-primary)">&bull; rejection_reason</text>
+
+              <!-- Table: status_history -->
+              <rect x="105" y="250" width="90" height="75" rx="3" fill="var(--bg-secondary)" stroke="var(--border)" stroke-width="1"/>
+              <line x1="105" y1="268" x2="195" y2="268" stroke="var(--border)" stroke-width="1"/>
+              <text x="150" y="261" font-size="7.5" font-weight="700" fill="var(--text-primary)" text-anchor="middle">status_history</text>
+              <text x="111" y="280" font-size="7" fill="var(--accent)" font-weight="600">&bull; UUID PK</text>
+              <text x="111" y="289" font-size="7" fill="var(--text-secondary)">&bull; shipment_id FK</text>
+              <text x="111" y="298" font-size="7" fill="var(--text-primary)">&bull; prev_status</text>
+              <text x="111" y="307" font-size="7" fill="var(--text-primary)">&bull; new_status</text>
+              <text x="111" y="316" font-size="7" fill="var(--text-primary)">&bull; action_by</text>
+
+              <!-- Table: alerts -->
+              <rect x="205" y="250" width="90" height="75" rx="3" fill="var(--bg-secondary)" stroke="var(--border)" stroke-width="1"/>
+              <line x1="205" y1="268" x2="295" y2="268" stroke="var(--border)" stroke-width="1"/>
+              <text x="250" y="261" font-size="7.5" font-weight="700" fill="var(--text-primary)" text-anchor="middle">alerts</text>
+              <text x="211" y="280" font-size="7" fill="var(--accent)" font-weight="600">&bull; UUID PK</text>
+              <text x="211" y="289" font-size="7" fill="var(--text-secondary)">&bull; shipment_id FK</text>
+              <text x="211" y="298" font-size="7" fill="var(--text-primary)">&bull; alert_type</text>
+              <text x="211" y="307" font-size="7" fill="var(--text-primary)">&bull; is_read</text>
+
+              <!-- Table: notification_log -->
+              <rect x="305" y="250" width="90" height="75" rx="3" fill="var(--bg-secondary)" stroke="var(--border)" stroke-width="1"/>
+              <line x1="305" y1="268" x2="395" y2="268" stroke="var(--border)" stroke-width="1"/>
+              <text x="350" y="261" font-size="7.5" font-weight="700" fill="var(--text-primary)" text-anchor="middle">notification_log</text>
+              <text x="311" y="280" font-size="7" fill="var(--accent)" font-weight="600">&bull; UUID PK</text>
+              <text x="311" y="289" font-size="7" fill="var(--text-secondary)">&bull; shipment_id FK</text>
+              <text x="311" y="298" font-size="7" fill="var(--text-primary)">&bull; send_status</text>
+              <text x="311" y="307" font-size="7" fill="var(--text-primary)">&bull; recipient_email</text>
+
+              <!-- Connector Lines -->
+              <!-- customer to shipments -->
+              <path d="M 200 95 L 200 125" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrow-db)" />
+
+              <!-- shipments to horizontal distribution -->
+              <path d="M 200 210 L 200 232" stroke="var(--accent)" stroke-width="1.5" />
+              <path d="M 50 232 L 350 232" stroke="var(--accent)" stroke-width="1.5" />
+              
+              <!-- distribution drops -->
+              <path d="M 50 232 L 50 250" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrow-db)" />
+              <path d="M 150 232 L 150 250" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrow-db)" />
+              <path d="M 250 232 L 250 250" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrow-db)" />
+              <path d="M 350 232 L 350 250" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrow-db)" />
+            </svg>
+          </div>
+        </div>
+      `
+    },
+    {
+      label: "Slide 11",
+      title: "Technical Challenges & Solutions — Sandbox Environment",
+      duration: "1-2 min",
+      content: `
+        <div class="two-col">
+          <div>
+            <h3 style="font-family:var(--font-serif); font-size:22px; margin-bottom:12px;">Challenge 1: Zero-Config Sandbox Fallback</h3>
+            <p style="font-size:14.5px; color:var(--text-secondary); margin-bottom:16px; line-height:1.6;">
+              <strong>The Problem:</strong> When deployed or run locally without database credentials (empty <code>.env</code> file), the application would fail or crash immediately upon mount, blocking sandbox evaluation.
+            </p>
+            <div class="card-bullet" style="background-color:rgba(16, 185, 129, 0.05); border-color:#10b981;">
+              <h4 style="color:#10b981;">The Solution: LocalStorage SDK Mocking</h4>
+              <p style="color:var(--text-primary);">
+                Implemented a complete mock client structure in <code>supabase.js</code>. If valid keys are not detected in the environment variables, the SDK returns a mock client that reads and writes tables to the browser's <code>localStorage</code>, including triggers.
+              </p>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; justify-content:center; gap:12px; background-color:rgba(0,0,0,0.05); border:1px solid var(--border); border-radius:12px; padding:24px;">
+            <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--accent); text-align:center;">Benefits of the Mock Layer</div>
+            <ul style="font-size:12.5px; line-height:1.6; color:var(--text-secondary); padding-left:16px;">
+              <li><strong>Zero Crash:</strong> Grabs default arrays on first render.</li>
+              <li><strong>E2E Integrity:</strong> Mimics status updates and email logging logic.</li>
+              <li><strong>Development speed:</strong> Enables standalone frontend development without network calls.</li>
+            </ul>
+          </div>
+        </div>
+      `
+    },
+    {
+      label: "Slide 12",
+      title: "Technical Challenges & Solutions — Status Sync & Mail Sandbox",
+      duration: "1-2 min",
+      content: `
+        <div class="two-col">
+          <div>
+            <h3 style="font-family:var(--font-serif); font-size:20px; margin-bottom:10px;">Challenge 2: Status Synchronization</h3>
+            <p style="font-size:13.5px; color:var(--text-secondary); margin-bottom:12px; line-height:1.5;">
+              <strong>The Problem:</strong> Keeping document status changes in sync with the parent shipment status (e.g. document approvals or rejections) via API requests introduced latency and risks of inconsistent database states.
+            </p>
+            <div class="card-bullet" style="background-color:rgba(16, 185, 129, 0.05); border-color:#10b981;">
+              <h4 style="color:#10b981;">The Solution: Postgres Triggers</h4>
+              <p style="color:var(--text-primary); font-size:12.5px;">
+                Shifted status calculation to database-level triggers. Any update to <code>shipment_documents</code> triggers a recount of approved files, updating status and creating alerts in a single transaction.
+              </p>
+            </div>
+          </div>
+          <div>
+            <h3 style="font-family:var(--font-serif); font-size:20px; margin-bottom:10px;">Challenge 3: Resend Sandbox Restrictions</h3>
+            <p style="font-size:13.5px; color:var(--text-secondary); margin-bottom:12px; line-height:1.5;">
+              <strong>The Problem:</strong> Resend's free tier only delivers emails to the developer's registered address, dropping emails sent to customer addresses in the sandbox environment.
+            </p>
+            <div class="card-bullet" style="background-color:rgba(16, 185, 129, 0.05); border-color:#10b981;">
+              <h4 style="color:#10b981;">The Solution: Database Audit Trail</h4>
+              <p style="color:var(--text-primary); font-size:12.5px;">
+                Configured Edge functions to log every dispatch to the <code>notification_log</code> table first. This table renders on the shipment dashboard, providing verification of outgoing alerts.
+              </p>
+            </div>
+          </div>
+        </div>
+      `
+    },
+    {
+      label: "Slide 13",
+      title: "Testing & Validation Results",
+      duration: "1 min",
+      content: `
+        <div style="display:flex; flex-direction:column; height:100%;">
+          <div style="margin-bottom:12px; font-size:13.5px; color:var(--text-secondary); display:flex; justify-content:space-between; align-items:center;">
+            <span>Verified 22 Part E checkoff validation test items. Zero failures recorded.</span>
+            <span class="badge pass">22 / 22 Passed</span>
+          </div>
+          <div style="flex:1; overflow-y:auto; border:1px solid var(--border); border-radius:8px;">
+            <table class="slide-table">
+              <thead>
+                <tr>
+                  <th style="width: 80px;">Test ID</th>
+                  <th>Test Case Description</th>
+                  <th style="width: 80px; text-align: center;">Status</th>
+                  <th>Verification Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Test 1-2</strong></td>
+                  <td>Dashboard stat cards and search filters. Renders correctly & clear resets lists.</td>
+                  <td style="text-align: center;"><span class="badge pass">PASS</span></td>
+                  <td>Local Storage Mock and API arrays slice dynamically.</td>
+                </tr>
+                <tr>
+                  <td><strong>Test 3-4</strong></td>
+                  <td>Volumetric formula checks. Actual weight vs Volumetric higher-weight billing check.</td>
+                  <td style="text-align: center;"><span class="badge pass">PASS</span></td>
+                  <td>Checked (L*W*H/6000) for edge cases. Max value selected.</td>
+                </tr>
+                <tr>
+                  <td><strong>Test 5-7</strong></td>
+                  <td>Missing field validations & document upload to storage bucket.</td>
+                  <td style="text-align: center;"><span class="badge pass">PASS</span></td>
+                  <td>Uploads reference path to PDF on storage vault.</td>
+                </tr>
+                <tr>
+                  <td><strong>Test 8-11</strong></td>
+                  <td>Checklist approvals auto-status promotion. Rejection sets status to ON_HOLD.</td>
+                  <td style="text-align: center;"><span class="badge pass">PASS</span></td>
+                  <td>Document trigger updates status and records events.</td>
+                </tr>
+                <tr>
+                  <td><strong>Test 12-13</strong></td>
+                  <td>Terminal states locking mechanism. Blocks file changes when Completed/Cancelled.</td>
+                  <td style="text-align: center;"><span class="badge pass">PASS</span></td>
+                  <td>Buttons, edit views, and input file selections locked.</td>
+                </tr>
+                <tr>
+                  <td><strong>Test 17-21</strong></td>
+                  <td>Email notification dispatches on status changes and audit log trail display.</td>
+                  <td style="text-align: center;"><span class="badge pass">PASS</span></td>
+                  <td>Edge function returns status code 200 and writes to logs.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `
+    },
+    {
+      label: "Slide 14",
+      title: "Learnings, Limitations & Future Scope",
+      duration: "2 min",
+      content: `
+        <div class="three-col" style="margin-bottom: 20px;">
+          <div class="card-bullet" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between; height:230px;">
+            <div>
+              <h4 style="color:var(--accent);">Key Learnings</h4>
+              <ul style="font-size:12.5px; color:var(--text-secondary); padding-left:14px; margin-top:8px; line-height:1.5;">
+                <li>Experienced the power of Supabase serverless design, reducing backend API boilerplate.</li>
+                <li>Learned database triggers and function writing in PL/pgSQL to enforce integrity.</li>
+                <li>Appreciated decoupling client SDKs to allow zero-config offline testing.</li>
+              </ul>
+            </div>
+            <div style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--text-secondary);">Technical Growth</div>
+          </div>
+          
+          <div class="card-bullet" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between; height:230px;">
+            <div>
+              <h4 style="color:var(--accent);">System Limitations</h4>
+              <ul style="font-size:12.5px; color:var(--text-secondary); padding-left:14px; margin-top:8px; line-height:1.5;">
+                <li><strong>Public RLS Policies:</strong> Open read/write access is set for demo ease; needs explicit user binds.</li>
+                <li><strong>Resend Sandbox:</strong> Email deliveries are limited to registered developer accounts.</li>
+                <li><strong>Short Link Lifespan:</strong> Signed storage URLs expire in 60 seconds.</li>
+              </ul>
+            </div>
+            <div style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--text-secondary);">Known Scope Gaps</div>
+          </div>
+
+          <div class="card-bullet" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between; height:230px;">
+            <div>
+              <h4 style="color:var(--accent);">Future Scope</h4>
+              <ul style="font-size:12.5px; color:var(--text-secondary); padding-left:14px; margin-top:8px; line-height:1.5;">
+                <li>Secure RLS using Supabase Auth claims (e.g. binding paths to employee IDs).</li>
+                <li>Integrate flight schedule APIs to auto-populate airport route details.</li>
+                <li>Integrate barcode/QR code scanners for mobile document uploading.</li>
+              </ul>
+            </div>
+            <div style="font-size:11px; font-weight:600; text-transform:uppercase; color:var(--text-secondary);">Next System Version</div>
+          </div>
+        </div>
+        <div class="card-bullet" style="background-color: var(--accent-bg); border-color: var(--accent); padding: 14px 18px; margin-bottom: 0;">
+          <h4 style="color: var(--accent); margin-bottom: 4px; font-size: 13.5px;">Conclusion</h4>
+          <p style="font-size: 12.5px; color: var(--text-primary); line-height: 1.5;">
+            The redesigned serverless Airway Bill & Document Tracker shows that moving business validations, status automation, and notification logs directly into PostgreSQL triggers and serverless edge functions increases system reliability, reduces developer maintenance overhead, and delivers a robust, high-performance logistics control tower.
+          </p>
+        </div>
+      `
+    },
+    {
+      label: "Slide 15",
+      title: "Thank You & Q&A",
+      duration: "open",
+      content: `
+        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; text-align:center;">
+          <h1 style="font-family:var(--font-serif); font-size:36px; font-weight:700; margin-bottom:12px;">Questions & Answers</h1>
+          <p style="font-size:15px; color:var(--text-secondary); max-width:600px; margin-bottom:32px;">
+            Thank you for your time. The system architecture, database ER diagram, and code highlights are available for reference.
+          </p>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; max-width:700px; text-align:left;">
+            <div style="border:1px solid var(--border); border-radius:8px; padding:16px; background-color:var(--bg-secondary);">
+              <strong style="font-size:13px; color:var(--accent); display:block; margin-bottom:6px;">Key Rationale Prepared:</strong>
+              <p style="font-size:12px; color:var(--text-secondary); line-height:1.4;">
+                Database normalization choices and using serverless triggers rather than client API updates to sync document lists.
+              </p>
+            </div>
+            <div style="border:1px solid var(--border); border-radius:8px; padding:16px; background-color:var(--bg-secondary);">
+              <strong style="font-size:13px; color:var(--accent); display:block; margin-bottom:6px;">Next Phase Roadmap:</strong>
+              <p style="font-size:12px; color:var(--text-secondary); line-height:1.4;">
+                Refining RLS row level security access to match staff login sessions, and testing email pipelines on verified domains.
+              </p>
+            </div>
+          </div>
+          <div style="margin-top:40px; font-size:11px; color:var(--text-secondary);">
+            Airway Bill & Document Tracker &bull; Project Closure &bull; June 2026
+          </div>
+        </div>
+      `
+    }
+  ];
+
+  // DOM Elements
+  const slideCard = document.getElementById('slide-card');
+  const slideList = document.getElementById('slide-list');
+  const prevBtn = document.getElementById('prev-btn');
+  const nextBtn = document.getElementById('next-btn');
+  const progressFill = document.getElementById('progress-fill');
+  const progressTrack = document.getElementById('progress-track');
+  const themeToggle = document.getElementById('theme-toggle');
+  const fullscreenToggle = document.getElementById('fullscreen-toggle');
+  const sidebarToggle = document.getElementById('sidebar-toggle');
+  const sidebar = document.getElementById('sidebar');
+
+  // Application State
+  let currentSlideIndex = 0;
+
+  // Initialize Sidebar List Items
+  function initSidebar() {
+    slideList.innerHTML = '';
+    SLIDES.forEach((slide, idx) => {
+      const li = document.createElement('li');
+      li.className = `slide-item ${idx === currentSlideIndex ? 'active' : ''}`;
+      li.innerHTML = `
+        <span class="num">${String(idx + 1).padStart(2, '0')}</span>
+        <span>${slide.title}</span>
+      `;
+      li.addEventListener('click', () => jumpToSlide(idx));
+      slideList.appendChild(li);
+    });
+  }
+
+  // Render Active Slide
+  function renderSlide() {
+    const slide = SLIDES[currentSlideIndex];
+    
+    // Add slide fade animation class
+    slideCard.classList.add('fade-out');
+    
+    setTimeout(() => {
+      slideCard.innerHTML = `
+        <div class="slide-label">
+          <span>${slide.label} of ${String(SLIDES.length).padStart(2, '0')}</span>
+          <span style="font-weight:600; letter-spacing:0.5px;">AWB-DT Final Review</span>
+        </div>
+        <h2 class="slide-title">
+          ${slide.title}
+          <span class="duration">${slide.duration}</span>
+        </h2>
+        <div class="slide-content">
+          ${slide.content}
+        </div>
+      `;
+      
+      slideCard.classList.remove('fade-out');
+      slideCard.classList.add('fade-in');
+    }, 150);
+
+    // Update sidebar items
+    const items = slideList.querySelectorAll('.slide-item');
+    items.forEach((item, idx) => {
+      if (idx === currentSlideIndex) {
+        item.classList.add('active');
+        item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        item.classList.remove('active');
+      }
+    });
+
+    // Update progress bar
+    const percentage = ((currentSlideIndex + 1) / SLIDES.length) * 100;
+    progressFill.style.width = `${percentage}%`;
+
+    // Update button states
+    prevBtn.disabled = currentSlideIndex === 0;
+    nextBtn.disabled = currentSlideIndex === SLIDES.length - 1;
+  }
+
+  // Navigation Logic
+  function jumpToSlide(index) {
+    if (index >= 0 && index < SLIDES.length) {
+      currentSlideIndex = index;
+      renderSlide();
+    }
+  }
+
+  // Next Slide Logic with boundary check
+  function nextSlide() {
+    if (currentSlideIndex < SLIDES.length - 1) {
+      currentSlideIndex++;
+      renderSlide();
+    }
+  }
+
+  // Prev Slide Logic with boundary check
+  function prevSlide() {
+    if (currentSlideIndex > 0) {
+      currentSlideIndex--;
+      renderSlide();
+    }
+  }
+
+  // Event Listeners
+  prevBtn.addEventListener('click', prevSlide);
+  nextBtn.addEventListener('click', nextSlide);
+
+  // Keyboard navigation
+  window.addEventListener('keydown', (e) => {
+    switch (e.key) {
+      case 'ArrowRight':
+      case ' ':
+        nextSlide();
+        e.preventDefault();
+        break;
+      case 'ArrowLeft':
+      case 'Backspace':
+        prevSlide();
+        e.preventDefault();
+        break;
+      case 'Home':
+        jumpToSlide(0);
+        e.preventDefault();
+        break;
+      case 'End':
+        jumpToSlide(SLIDES.length - 1);
+        e.preventDefault();
+        break;
+      case '?':
+        alert(`Keyboard Shortcuts:
+&bull; Right Arrow / Space: Next Slide
+&bull; Left Arrow / Backspace: Previous Slide
+&bull; Home: First Slide
+&bull; End: Last Slide
+&bull; Ctrl + P: Export as PDF / Print`);
+        break;
+    }
+  });
+
+  // Track click to jump slide
+  progressTrack.addEventListener('click', (e) => {
+    const rect = progressTrack.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const ratio = clickX / rect.width;
+    const targetIdx = Math.floor(ratio * SLIDES.length);
+    jumpToSlide(targetIdx);
+  });
+
+  // Sidebar toggle
+  sidebarToggle.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+  });
+
+  // Theme toggle (Dark / Light)
+  themeToggle.addEventListener('click', () => {
+    if (document.body.classList.contains('dark')) {
+      document.body.classList.remove('dark');
+      document.body.classList.add('light');
+      themeToggle.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41m12.72-12.72l-1.41 1.41"/></svg>`;
+    } else {
+      document.body.classList.remove('light');
+      document.body.classList.add('dark');
+      themeToggle.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
+    }
+  });
+
+  // Fullscreen toggle
+  fullscreenToggle.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        alert(`Error enabling full-screen mode: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  });
+
+  // Scale slide viewport to fit presentation container
+  function scaleSlide() {
+    const viewport = document.querySelector('.slide-viewport');
+    const container = document.getElementById('slide-card');
+    const scaleX = viewport.clientWidth / 1280;
+    const scaleY = viewport.clientHeight / 830;
+    const scale = Math.min(scaleX, scaleY);
+    container.style.transform = `scale(${scale})`;
+    container.style.transformOrigin = 'center center';
+  }
+
+  window.addEventListener('resize', scaleSlide);
+
+  // Initialize
+  initSidebar();
+  renderSlide();
+  setTimeout(scaleSlide, 100);
+
+</script>
+</body>
+</html>

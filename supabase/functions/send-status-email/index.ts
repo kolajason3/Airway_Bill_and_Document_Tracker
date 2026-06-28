@@ -6,10 +6,13 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
 const TEMPLATES: Record<string, (s: any) => { subject: string; html: string }> = {
-  PENDING_DOCUMENTS: (s) => ({
-    subject: `Shipment ${s.awb_number} Registered — Documents Pending`,
-    html: `<p>Hi ${s.customer_name},</p><p>Your shipment <b>${s.awb_number}</b> (${s.origin_airport} → ${s.destination_airport}) has been registered with ORBEM Solutions. We are awaiting required documents before it can proceed.</p>`,
-  }),
+  PENDING_DOCUMENTS: (s) => {
+    const paymentMsg = s.payment_status === 'UNPAID' ? '<p><b>Note:</b> Payment for this shipment is currently pending (UNPAID). Please complete the payment to prevent routing delays.</p>' : '';
+    return {
+      subject: `Shipment ${s.awb_number} Registered — Documents Pending`,
+      html: `<p>Hi ${s.customer_name},</p><p>Your shipment <b>${s.awb_number}</b> (${s.origin_airport} → ${s.destination_airport}) has been registered with ORBEM Solutions. We are awaiting required documents before it can proceed.</p>${paymentMsg}`,
+    };
+  },
   READY_FOR_HANDOVER: (s) => ({
     subject: `Shipment ${s.awb_number} — Ready for Airline Handover`,
     html: `<p>Hi ${s.customer_name},</p><p>All documents for shipment <b>${s.awb_number}</b> have been verified and approved. Your cargo is ready for airline handover.</p>`,
@@ -26,11 +29,15 @@ const TEMPLATES: Record<string, (s: any) => { subject: string; html: string }> =
     subject: `Shipment ${s.awb_number} Cancelled`,
     html: `<p>Hi ${s.customer_name},</p><p>Shipment <b>${s.awb_number}</b> has been cancelled. Contact our operations team with any questions.</p>`,
   }),
+  PAYMENT_CONFIRMED: (s) => ({
+    subject: `Payment Confirmed: Shipment ${s.awb_number}`,
+    html: `<p>Hi ${s.customer_name},</p><p>We have successfully received payment for your shipment <b>${s.awb_number}</b> (${s.origin_airport} → ${s.destination_airport}). Thank you for the payment. Your cargo processing will proceed.</p>`,
+  }),
 }
 
 Deno.serve(async (req) => {
   try {
-    const { shipment_id } = await req.json()
+    const { shipment_id, event } = await req.json()
 
     const { data: shipment, error } = await supabase
       .from('shipments')
@@ -52,8 +59,10 @@ Deno.serve(async (req) => {
       holdReason = rejected?.rejection_reason ?? null
     }
 
-    const recipientEmail = shipment.customers?.email ?? null
-    const buildTemplate = TEMPLATES[shipment.status] ?? TEMPLATES.PENDING_DOCUMENTS
+    const recipientEmail = shipment.client_email ?? shipment.customers?.email ?? null
+    const buildTemplate = event === 'PAYMENT_CONFIRMED'
+      ? TEMPLATES.PAYMENT_CONFIRMED
+      : (TEMPLATES[shipment.status] ?? TEMPLATES.PENDING_DOCUMENTS)
     const { subject, html } = buildTemplate({
       ...shipment,
       customer_name: shipment.customers?.name ?? 'Customer',

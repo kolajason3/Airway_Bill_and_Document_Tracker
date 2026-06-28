@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { PlaneTakeoff, Shield, User, FileSearch, ArrowRight, AlertCircle, Info, CheckCircle2, XCircle, Clock, ArrowLeft, X } from 'lucide-react';
+import { PlaneTakeoff, Shield, User, FileSearch, ArrowRight, AlertCircle, Info, CheckCircle2, XCircle, Clock, ArrowLeft, X, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
 // Card configuration data
 const CARDS = {
-  admin: {
-    id: 'admin',
-    label: 'Admin',
-    fullLabel: 'Admin Control Center',
-    desc: 'Full administrative override control. Verify AWB checklists, force status overrides, and monitor employee activity logs.',
+  staff: {
+    id: 'staff',
+    label: 'Staff Portal',
+    fullLabel: 'Staff Control Tower',
+    desc: 'Sign in to access your administrative overrides or operator dashboard. Manage airway bills, upload documents, and audit logs.',
     Icon: Shield,
     accentClass: 'accent-blue',
     bgAccent: 'bg-accent-blue/10 text-accent-blue border-accent-blue/20',
@@ -16,19 +16,6 @@ const CARDS = {
     btnClass: 'bg-accent-blue hover:bg-accent-blue-hover',
     borderHover: 'hover:border-accent-blue/30',
     glowColor: 'shadow-accent-blue/8',
-  },
-  employee: {
-    id: 'employee',
-    label: 'Employee',
-    fullLabel: 'Employee Operations',
-    desc: 'Register new airway bills, upload required documents, toggle checklist files, and manage audit updates.',
-    Icon: User,
-    accentClass: 'emerald',
-    bgAccent: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    pillBg: 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/25 text-emerald-400',
-    btnClass: 'bg-emerald-500 hover:bg-emerald-600',
-    borderHover: 'hover:border-emerald-500/30',
-    glowColor: 'shadow-emerald-500/8',
   },
   tracking: {
     id: 'tracking',
@@ -46,12 +33,11 @@ const CARDS = {
 };
 
 export default function PortalGateway({ onLogin }) {
-  const [employeeEmail, setEmployeeEmail] = useState('');
-  const [adminPasscode, setAdminPasscode] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [searchAwb, setSearchAwb] = useState('');
   
-  const [adminError, setAdminError] = useState('');
-  const [employeeError, setEmployeeError] = useState('');
+  const [loginError, setLoginError] = useState('');
   const [searchError, setSearchError] = useState('');
   const [searchResult, setSearchResult] = useState(null);
 
@@ -60,9 +46,13 @@ export default function PortalGateway({ onLogin }) {
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
-  const [regRole, setRegRole] = useState('Employee');
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [regSuccessMessage, setRegSuccessMessage] = useState('');
 
-  // Which card is currently expanded (null = show all 3)
+  // Which card is currently expanded (null = show all cards)
   const [activeCard, setActiveCard] = useState(null);
   // Animation phase: 'idle' | 'expanding' | 'expanded' | 'collapsing'
   const [phase, setPhase] = useState('idle');
@@ -80,11 +70,14 @@ export default function PortalGateway({ onLogin }) {
     if (activeCard === cardId) return;
     setPhase('expanding');
     setActiveCard(cardId);
-    // Clear errors when switching
-    setAdminError('');
-    setEmployeeError('');
+    // Clear errors and messages when switching
+    setLoginError('');
     setSearchError('');
     setSearchResult(null);
+    setRegSuccessMessage('');
+    setRegConfirmPassword('');
+    setShowRegPassword(false);
+    setShowConfirmPassword(false);
     setTimeout(() => setPhase('expanded'), 400);
   };
 
@@ -96,22 +89,16 @@ export default function PortalGateway({ onLogin }) {
     }, 350);
   };
 
-  const handleAdminSubmit = (e) => {
+  const handleStaffSubmit = async (e) => {
     e.preventDefault();
-    if (adminPasscode === 'admin123' || adminPasscode.toLowerCase() === 'admin') {
-      onLogin('admin', { id: 'admin-id', name: 'Administrator', role: 'Administrator', email: 'admin@orbem.com', phone: 'Master Control Phone' });
-    } else {
-      setAdminError('Invalid admin passcode. Try: admin123');
-    }
-  };
-
-  const handleEmployeeSubmit = async (e) => {
-    e.preventDefault();
-    setEmployeeError('');
+    setLoginError('');
+    setRegSuccessMessage('');
     
-    const emailToSearch = employeeEmail.trim().toLowerCase();
-    if (!emailToSearch) {
-      setEmployeeError('Please enter your employee email.');
+    const emailToSearch = email.trim().toLowerCase();
+    const passwordToVerify = password.trim();
+
+    if (!emailToSearch || !passwordToVerify) {
+      setLoginError('Enter correct credentials');
       return;
     }
 
@@ -121,41 +108,67 @@ export default function PortalGateway({ onLogin }) {
         .from('staff_profiles')
         .select('*')
         .eq('email', emailToSearch)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        setEmployeeError('Profile not found. Try: akshaya@orbem.com or jason@orbem.com');
+        console.error(error);
+        setLoginError('Enter correct credentials');
         return;
       }
 
-      if (profile) {
-        // Set logged_in status to true in the database
-        await supabase
-          .from('staff_profiles')
-          .update({ logged_in: true })
-          .eq('id', profile.id);
-
-        onLogin('employee', { ...profile, logged_in: true });
-      } else {
-        setEmployeeError('Profile not found. Try: akshaya@orbem.com or jason@orbem.com');
+      if (!profile || profile.password !== passwordToVerify) {
+        setLoginError('Wrong email or password or enter correct credentials');
+        return;
       }
+
+      if (!profile.approved) {
+        setLoginError('Account is pending administrator approval.');
+        return;
+      }
+
+      // Set logged_in status to true in the database
+      await supabase
+        .from('staff_profiles')
+        .update({ logged_in: true })
+        .eq('id', profile.id);
+
+      // Jason (kolajason3@gmail.com) is seeded as Administrator, so he will get 'admin' access
+      const portalType = profile.role?.toLowerCase() === 'administrator' ? 'admin' : 'employee';
+      onLogin(portalType, { ...profile, logged_in: true });
+
     } catch (err) {
       console.error(err);
-      setEmployeeError('An error occurred during verification.');
+      setLoginError('Enter correct credentials');
     }
   };
 
-  const handleEmployeeRegister = async (e) => {
+  const handlePasswordBlur = () => {
+    if (regPassword && regConfirmPassword && regPassword !== regConfirmPassword) {
+      setLoginError('Passwords do not match. Enter correct credentials');
+    } else if (regPassword && regConfirmPassword && regPassword === regConfirmPassword) {
+      setLoginError('');
+    }
+  };
+
+  const handleStaffRegister = async (e) => {
     e.preventDefault();
-    setEmployeeError('');
+    setLoginError('');
+    setRegSuccessMessage('');
 
     const nameToReg = regName.trim();
     const emailToReg = regEmail.trim().toLowerCase();
     const phoneToReg = regPhone.trim();
-    const roleToReg = regRole;
+    const passwordToReg = regPassword.trim();
+    const confirmPasswordToReg = regConfirmPassword.trim();
+    const roleToReg = 'Employee';
 
-    if (!nameToReg || !emailToReg) {
-      setEmployeeError('Name and Email are required.');
+    if (!nameToReg || !emailToReg || !passwordToReg || !confirmPasswordToReg) {
+      setLoginError('Enter correct credentials');
+      return;
+    }
+
+    if (passwordToReg !== confirmPasswordToReg) {
+      setLoginError('Passwords do not match. Enter correct credentials');
       return;
     }
 
@@ -168,17 +181,19 @@ export default function PortalGateway({ onLogin }) {
         .maybeSingle();
 
       if (existing) {
-        setEmployeeError('An employee profile with this email already exists.');
+        setLoginError('An employee profile with this email already exists.');
         return;
       }
 
-      // 2. Insert new staff profile
+      // 2. Insert new staff profile (approved = false, waiting for approval)
       const newStaff = {
         name: nameToReg,
         role: roleToReg,
         email: emailToReg,
         phone: phoneToReg || null,
-        logged_in: true
+        password: passwordToReg,
+        approved: false, // Must be approved by admin
+        logged_in: false
       };
 
       const { data, error: insertErr } = await supabase
@@ -189,12 +204,18 @@ export default function PortalGateway({ onLogin }) {
 
       if (insertErr) throw insertErr;
 
-      // 3. Log in successfully
-      onLogin('employee', data);
+      // 3. Success state
+      setRegName('');
+      setRegEmail('');
+      setRegPhone('');
+      setRegPassword('');
+      setRegConfirmPassword('');
+      setIsRegistering(false);
+      setRegSuccessMessage('Registration successful! Waiting for administrator approval.');
 
     } catch (err) {
       console.error(err);
-      setEmployeeError('Failed to register new employee. Verify database schema.');
+      setLoginError('Failed to register. Enter correct credentials');
     }
   };
 
@@ -231,13 +252,13 @@ export default function PortalGateway({ onLogin }) {
       }
 
       if (!data) {
-        setSearchError('No shipment found with this AWB number. Try: 157-12345672');
+        setSearchError('Wrong AWB number or enter correctly');
       } else {
         setSearchResult(data);
       }
     } catch (err) {
       console.error(err);
-      setSearchError('Error querying database.');
+      setSearchError('Wrong AWB number or enter correctly');
     }
   };
 
@@ -322,72 +343,58 @@ export default function PortalGateway({ onLogin }) {
           <div className="h-px bg-gradient-to-r from-transparent via-[#222f47] to-transparent mb-6" />
 
           {/* Card-specific form */}
-          {activeCard === 'admin' && (
-            <form onSubmit={handleAdminSubmit} className="space-y-5 animate-fade-in">
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Admin Passcode</label>
-                <input 
-                  ref={inputRef}
-                  type="password"
-                  placeholder="Enter admin passcode"
-                  value={adminPasscode}
-                  onChange={(e) => {
-                    setAdminPasscode(e.target.value);
-                    setAdminError('');
-                  }}
-                  className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3.5 text-sm text-white placeholder-text-muted outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/20 transition-all duration-200"
-                />
-              </div>
-              {adminError && (
-                <div className="text-red-400 text-xs flex items-center gap-1.5 animate-fade-in">
-                  <AlertCircle size={13} />
-                  <span>{adminError}</span>
+          {activeCard === 'staff' && !isRegistering && (
+            <form onSubmit={handleStaffSubmit} className="space-y-5 animate-fade-in">
+              {regSuccessMessage && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl text-xs text-emerald-400 flex items-start gap-2 animate-fade-in">
+                  <CheckCircle2 size={15} className="flex-shrink-0 mt-0.5" />
+                  <span>{regSuccessMessage}</span>
                 </div>
               )}
-              <div className="bg-[#0b0f19] border border-[#222f47] p-3 rounded-xl text-[11px] text-text-muted flex items-start gap-2">
-                <Info size={15} className="text-accent-blue flex-shrink-0 mt-0.5" />
-                <span>Demo passcode is <strong className="text-white">admin123</strong></span>
+              
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Email Address</label>
+                <input 
+                  ref={inputRef}
+                  type="email"
+                  placeholder="Enter email address"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setLoginError('');
+                  }}
+                  className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3.5 text-sm text-white placeholder-text-muted outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/20 transition-all duration-200"
+                  required
+                />
               </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Password</label>
+                <input 
+                  type="password"
+                  placeholder="Enter password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setLoginError('');
+                  }}
+                  className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3.5 text-sm text-white placeholder-text-muted outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/20 transition-all duration-200"
+                  required
+                />
+              </div>
+
+              {loginError && (
+                <div className="text-red-400 text-xs flex items-center gap-1.5 animate-fade-in">
+                  <AlertCircle size={13} />
+                  <span>{loginError}</span>
+                </div>
+              )}
+
               <button 
                 type="submit"
                 className="w-full bg-accent-blue hover:bg-accent-blue-hover text-white py-3.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-lg hover:shadow-accent-blue/20 active:scale-[0.98]"
               >
-                Enter Admin Portal <ArrowRight size={16} />
-              </button>
-            </form>
-          )}
-
-          {activeCard === 'employee' && !isRegistering && (
-            <form onSubmit={handleEmployeeSubmit} className="space-y-5 animate-fade-in">
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Employee Email</label>
-                <input 
-                  ref={inputRef}
-                  type="email"
-                  placeholder="e.g. akshaya@orbem.com"
-                  value={employeeEmail}
-                  onChange={(e) => {
-                    setEmployeeEmail(e.target.value);
-                    setEmployeeError('');
-                  }}
-                  className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3.5 text-sm text-white placeholder-text-muted outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all duration-200"
-                />
-              </div>
-              {employeeError && (
-                <div className="text-red-400 text-xs flex items-center gap-1.5 animate-fade-in">
-                  <AlertCircle size={13} />
-                  <span>{employeeError}</span>
-                </div>
-              )}
-              <div className="bg-[#0b0f19] border border-[#222f47] p-3 rounded-xl text-[11px] text-text-muted flex items-start gap-2">
-                <Info size={15} className="text-emerald-400 flex-shrink-0 mt-0.5" />
-                <span>Try: <strong className="text-white">akshaya@orbem.com</strong> or <strong className="text-white">jason@orbem.com</strong></span>
-              </div>
-              <button 
-                type="submit"
-                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/20 active:scale-[0.98]"
-              >
-                Sign In as Staff <ArrowRight size={16} />
+                Sign In to Control Tower <ArrowRight size={16} />
               </button>
               
               <div className="text-center mt-3 border-t border-[#222f47]/50 pt-3">
@@ -395,26 +402,27 @@ export default function PortalGateway({ onLogin }) {
                   type="button"
                   onClick={() => {
                     setIsRegistering(true);
-                    setEmployeeError('');
+                    setLoginError('');
+                    setRegSuccessMessage('');
                   }}
-                  className="text-xs font-semibold text-emerald-400 hover:underline transition-colors"
+                  className="text-xs font-semibold text-accent-blue hover:underline transition-colors"
                 >
-                  New employee? Register account
+                  New staff member? Register account
                 </button>
               </div>
             </form>
           )}
 
-          {activeCard === 'employee' && isRegistering && (
-            <form onSubmit={handleEmployeeRegister} className="space-y-4 animate-fade-in">
+          {activeCard === 'staff' && isRegistering && (
+            <form onSubmit={handleStaffRegister} className="space-y-4 animate-fade-in">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Full Name *</label>
                 <input 
                   type="text"
-                  placeholder="e.g. Rahul Sharma"
+                  placeholder="e.g. Jason"
                   value={regName}
                   onChange={(e) => setRegName(e.target.value)}
-                  className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3 text-xs text-white placeholder-text-muted outline-none focus:border-emerald-500 transition-all"
+                  className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3 text-xs text-white placeholder-text-muted outline-none focus:border-accent-blue transition-all"
                   required
                 />
               </div>
@@ -423,51 +431,83 @@ export default function PortalGateway({ onLogin }) {
                 <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Email Address *</label>
                 <input 
                   type="email"
-                  placeholder="e.g. rahul@orbem.com"
+                  placeholder="e.g. kolajason3@gmail.com"
                   value={regEmail}
                   onChange={(e) => setRegEmail(e.target.value)}
-                  className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3 text-xs text-white placeholder-text-muted outline-none focus:border-emerald-500 transition-all"
+                  className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3 text-xs text-white placeholder-text-muted outline-none focus:border-accent-blue transition-all"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Phone Number</label>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Password *</label>
+                <div className="relative">
                   <input 
-                    type="text"
-                    placeholder="+91-XXXXX-XXXXX"
-                    value={regPhone}
-                    onChange={(e) => setRegPhone(e.target.value)}
-                    className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3 text-xs text-white placeholder-text-muted outline-none focus:border-emerald-500 transition-all"
+                    type={showRegPassword ? "text" : "password"}
+                    placeholder="Enter a secure password"
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    onBlur={handlePasswordBlur}
+                    className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl pl-4 pr-10 py-3 text-xs text-white placeholder-text-muted outline-none focus:border-accent-blue transition-all"
+                    required
                   />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Role *</label>
-                  <select 
-                    value={regRole}
-                    onChange={(e) => setRegRole(e.target.value)}
-                    className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-emerald-500 transition-all"
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-white transition-colors cursor-pointer"
+                    title={showRegPassword ? "Hide password" : "Show password"}
                   >
-                    <option value="Employee">Employee</option>
-                    <option value="Administrator">Administrator</option>
-                  </select>
+                    {showRegPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
                 </div>
               </div>
 
-              {employeeError && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Confirm Password *</label>
+                <div className="relative">
+                  <input 
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Confirm your password"
+                    value={regConfirmPassword}
+                    onChange={(e) => setRegConfirmPassword(e.target.value)}
+                    onBlur={handlePasswordBlur}
+                    className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl pl-4 pr-10 py-3 text-xs text-white placeholder-text-muted outline-none focus:border-accent-blue transition-all"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-white transition-colors cursor-pointer"
+                    title={showConfirmPassword ? "Hide password" : "Show password"}
+                  >
+                    {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Phone Number</label>
+                <input 
+                  type="text"
+                  placeholder="+91-XXXXX-XXXXX"
+                  value={regPhone}
+                  onChange={(e) => setRegPhone(e.target.value)}
+                  className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-4 py-3 text-xs text-white placeholder-text-muted outline-none focus:border-accent-blue transition-all"
+                />
+              </div>
+
+              {loginError && (
                 <div className="text-red-400 text-[11px] flex items-center gap-1.5 animate-pulse mt-2">
                   <AlertCircle size={13} />
-                  <span>{employeeError}</span>
+                  <span>{loginError}</span>
                 </div>
               )}
 
               <button 
                 type="submit"
-                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 mt-2 hover:shadow-lg hover:shadow-emerald-500/20 active:scale-[0.98]"
+                className="w-full bg-accent-blue hover:bg-accent-blue-hover text-white py-3.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 mt-2 hover:shadow-lg hover:shadow-accent-blue/20 active:scale-[0.98]"
               >
-                Create Account & Sign In <ArrowRight size={16} />
+                Create Account & Request Approval <ArrowRight size={16} />
               </button>
 
               <div className="text-center mt-3 border-t border-[#222f47]/50 pt-3">
@@ -475,9 +515,10 @@ export default function PortalGateway({ onLogin }) {
                   type="button"
                   onClick={() => {
                     setIsRegistering(false);
-                    setEmployeeError('');
+                    setLoginError('');
+                    setRegSuccessMessage('');
                   }}
-                  className="text-xs font-semibold text-emerald-400 hover:underline transition-colors"
+                  className="text-xs font-semibold text-accent-blue hover:underline transition-colors"
                 >
                   Already have an account? Sign In
                 </button>

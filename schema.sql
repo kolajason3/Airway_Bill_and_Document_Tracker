@@ -8,6 +8,7 @@
 DROP VIEW IF EXISTS dashboard_summary CASCADE;
 DROP VIEW IF EXISTS shipments_with_summary CASCADE;
 DROP TABLE IF EXISTS alerts CASCADE;
+DROP TABLE IF EXISTS notification_log CASCADE;
 DROP TABLE IF EXISTS status_history CASCADE;
 DROP TABLE IF EXISTS shipment_documents CASCADE;
 DROP TABLE IF EXISTS shipments CASCADE;
@@ -36,6 +37,8 @@ CREATE TABLE staff_profiles (
     role VARCHAR(100) NOT NULL CHECK (role IN ('Administrator', 'Employee', 'administrator', 'employee')),
     email VARCHAR(255) NOT NULL UNIQUE,
     phone VARCHAR(50),
+    password VARCHAR(255) NOT NULL DEFAULT 'password123',
+    approved BOOLEAN DEFAULT FALSE,
     logged_in BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT now()
 );
@@ -105,6 +108,18 @@ CREATE TABLE alerts (
     alert_type VARCHAR(50) NOT NULL,
     message TEXT NOT NULL,
     is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT now()
+);
+
+CREATE TABLE notification_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    shipment_id UUID REFERENCES shipments(id) ON DELETE CASCADE,
+    channel VARCHAR(50) NOT NULL,
+    recipient_email VARCHAR(255),
+    subject VARCHAR(255),
+    status_snapshot shipment_status_enum,
+    send_status VARCHAR(50),
+    error_message TEXT,
     created_at TIMESTAMP DEFAULT now()
 );
 
@@ -229,6 +244,7 @@ ALTER TABLE shipment_documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE status_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE alerts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_log ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY allow_all_customers ON customers FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY allow_all_shipments ON shipments FOR ALL USING (true) WITH CHECK (true);
@@ -236,22 +252,23 @@ CREATE POLICY allow_all_documents ON shipment_documents FOR ALL USING (true) WIT
 CREATE POLICY allow_all_history ON status_history FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY allow_all_alerts ON alerts FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY allow_all_staff ON staff_profiles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY allow_all_notifications ON notification_log FOR ALL USING (true) WITH CHECK (true);
 
 -- =========================================================================
 -- 7. SEED DATA
 -- =========================================================================
 -- Seed Staff Profiles
-INSERT INTO staff_profiles (id, name, role, email, phone, logged_in) VALUES
-  ('d1111111-1111-1111-1111-111111111111', 'Akshaya', 'Employee', 'akshaya@orbem.com', '+91-98765-43210', false),
-  ('d2222222-2222-2222-2222-222222222222', 'Rasul khan', 'Administrator', 'rasulkhan@orbem.com', '+91-99887-76655', false),
-  ('d3333333-3333-3333-3333-333333333333', 'Jason', 'Employee', 'jason@orbem.com', '+91-91234-56789', false)
-ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, phone = EXCLUDED.phone;
+INSERT INTO staff_profiles (id, name, role, email, phone, password, approved, logged_in) VALUES
+  ('d1111111-1111-1111-1111-111111111111', 'Akshaya', 'Employee', 'ammu.n2428@gmail.com', '+91-98765-43210', 'akshaya123', true, false),
+  ('d2222222-2222-2222-2222-222222222222', 'Rasul khan', 'Administrator', 'mohammedrasulkhan09@gmail.com', '+91-99887-76655', 'rasul123', true, false),
+  ('d3333333-3333-3333-3333-333333333333', 'Jason', 'Administrator', 'kolajason3@gmail.com', '+91-91234-56789', 'jason123', true, false)
+ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, phone = EXCLUDED.phone, password = EXCLUDED.password, approved = EXCLUDED.approved;
 
 -- Seed Customers
 INSERT INTO customers (id, name, type, company_name, phone, email) VALUES
   ('c0000000-0000-0000-0000-000000000001', 'Lufthansa Cargo Service', 'IMPORTER', 'Lufthansa Cargo AG', '+49-69-696-0', 'kolajason3@gmail.com'),
-  ('c0000000-0000-0000-0000-000000000002', 'Apex Pharma Logistics', 'EXPORTER', 'Apex Pharmaceuticals', '+971-4-888-8888', 'kolajason3@gmail.com'),
-  ('c0000000-0000-0000-0000-000000000003', 'Global Electronics Dispatch', 'AGENT', 'Global Electronics Corp', '+31-20-500-1234', 'kolajason3@gmail.com')
+  ('c0000000-0000-0000-0000-000000000002', 'Apex Pharma Logistics', 'EXPORTER', 'Apex Pharmaceuticals', '+971-4-888-8888', 'mohammedrasulkhan09@gmail.com'),
+  ('c0000000-0000-0000-0000-000000000003', 'Global Electronics Dispatch', 'AGENT', 'Global Electronics Corp', '+31-20-500-1234', 'ammu.n2428@gmail.com')
 ON CONFLICT (id) DO NOTHING;
 
 -- Seed Shipments (triggers calculate weight & spawn documents)

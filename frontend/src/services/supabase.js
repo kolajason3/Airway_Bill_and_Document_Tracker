@@ -16,15 +16,15 @@ const isConfigured =
 // MOCK SEED DATA FOR LOCAL STORAGE
 // =========================================================================
 const defaultStaff = [
-  { id: 'd1111111-1111-1111-1111-111111111111', name: 'Akshaya', role: 'Employee', email: 'akshaya@orbem.com', phone: '+91-98765-43210', logged_in: false },
-  { id: 'd2222222-2222-2222-2222-222222222222', name: 'Rasul khan', role: 'Administrator', email: 'rasulkhan@orbem.com', phone: '+91-99887-76655', logged_in: false },
-  { id: 'd3333333-3333-3333-3333-333333333333', name: 'Jason', role: 'Employee', email: 'jason@orbem.com', phone: '+91-91234-56789', logged_in: false }
+  { id: 'd1111111-1111-1111-1111-111111111111', name: 'Akshaya', role: 'Employee', email: 'ammu.n2428@gmail.com', phone: '+91-98765-43210', password: 'akshaya123', approved: true, logged_in: false },
+  { id: 'd2222222-2222-2222-2222-222222222222', name: 'Rasul khan', role: 'Administrator', email: 'mohammedrasulkhan09@gmail.com', phone: '+91-99887-76655', password: 'rasul123', approved: true, logged_in: false },
+  { id: 'd3333333-3333-3333-3333-333333333333', name: 'Jason', role: 'Administrator', email: 'kolajason3@gmail.com', phone: '+91-91234-56789', password: 'jason123', approved: true, logged_in: false }
 ];
 
 const defaultCustomers = [
-  { id: 'c0000000-0000-0000-0000-000000000001', name: 'Lufthansa Cargo Service', type: 'LOGISTICS_PARTNER', company_name: 'Lufthansa Cargo AG', email: 'kolajason3@gmail.com', phone: '+49-69-696-0' },
-  { id: 'c0000000-0000-0000-0000-000000000002', name: 'Apex Pharma Logistics', type: 'EXPORTER', company_name: 'Apex Pharmaceuticals', email: 'kolajason3@gmail.com', phone: '+971-4-888-8888' },
-  { id: 'c0000000-0000-0000-0000-000000000003', name: 'Global Electronics Dispatch', type: 'AGENT', company_name: 'Global Electronics Corp', email: 'kolajason3@gmail.com', phone: '+31-20-500-1234' }
+  { id: 'c0000000-0000-0000-0000-000000000001', name: 'Lufthansa Cargo Service', type: 'IMPORTER', company_name: 'Lufthansa Cargo AG', email: 'kolajason3@gmail.com', phone: '+49-69-696-0' },
+  { id: 'c0000000-0000-0000-0000-000000000002', name: 'Apex Pharma Logistics', type: 'EXPORTER', company_name: 'Apex Pharmaceuticals', email: 'mohammedrasulkhan09@gmail.com', phone: '+971-4-888-8888' },
+  { id: 'c0000000-0000-0000-0000-000000000003', name: 'Global Electronics Dispatch', type: 'AGENT', company_name: 'Global Electronics Corp', email: 'ammu.n2428@gmail.com', phone: '+31-20-500-1234' }
 ];
 
 const defaultShipments = [
@@ -204,10 +204,12 @@ const defaultNotifications = [
 ];
 
 const initLocalStorage = () => {
-  if (!localStorage.getItem('sb_staff_profiles')) {
+  const existingStaff = localStorage.getItem('sb_staff_profiles');
+  if (!existingStaff || !existingStaff.includes('kolajason3@gmail.com') || !existingStaff.includes('password')) {
     localStorage.setItem('sb_staff_profiles', JSON.stringify(defaultStaff));
   }
-  if (!localStorage.getItem('sb_customers')) {
+  const existingCustomers = localStorage.getItem('sb_customers');
+  if (!existingCustomers || !existingCustomers.includes('mohammedrasulkhan09@gmail.com')) {
     localStorage.setItem('sb_customers', JSON.stringify(defaultCustomers));
   }
   if (!localStorage.getItem('sb_shipments')) {
@@ -393,12 +395,13 @@ class MockSupabaseClient {
             // Log mock notification
             const notifications = JSON.parse(localStorage.getItem('sb_notification_log') || '[]');
             const cust = JSON.parse(localStorage.getItem('sb_customers') || '[]').find(c => c.id === sh.customer_id);
+            const paymentMsg = sh.payment_status === 'UNPAID' ? ' (Note: Payment is pending)' : '';
             notifications.push({
               id: crypto.randomUUID(),
               shipment_id: sh.id,
               channel: 'EMAIL',
               recipient_email: sh.client_email || (cust ? cust.email : null),
-              subject: `Shipment ${sh.awb_number} Registered — Documents Pending`,
+              subject: `Shipment ${sh.awb_number} Registered — Documents Pending${paymentMsg}`,
               status_snapshot: sh.status,
               send_status: (sh.client_email || (cust ? cust.email : null)) ? 'SENT' : 'SKIPPED_NO_EMAIL',
               error_message: null,
@@ -461,6 +464,24 @@ class MockSupabaseClient {
                       channel: 'EMAIL',
                       recipient_email: updated.client_email || (cust ? cust.email : null),
                       subject,
+                      status_snapshot: updated.status,
+                      send_status: (updated.client_email || (cust ? cust.email : null)) ? 'SENT' : 'SKIPPED_NO_EMAIL',
+                      error_message: null,
+                      created_at: new Date().toISOString()
+                    });
+                    localStorage.setItem('sb_notification_log', JSON.stringify(notifications));
+                  }
+
+                  // Trigger mock notification if payment status changed to PAID!
+                  if (item.payment_status !== updated.payment_status && updated.payment_status === 'PAID') {
+                    const notifications = JSON.parse(localStorage.getItem('sb_notification_log') || '[]');
+                    const cust = JSON.parse(localStorage.getItem('sb_customers') || '[]').find(c => c.id === updated.customer_id);
+                    notifications.push({
+                      id: crypto.randomUUID(),
+                      shipment_id: updated.id,
+                      channel: 'EMAIL',
+                      recipient_email: updated.client_email || (cust ? cust.email : null),
+                      subject: `Payment Confirmed: Shipment ${updated.awb_number}`,
                       status_snapshot: updated.status,
                       send_status: (updated.client_email || (cust ? cust.email : null)) ? 'SENT' : 'SKIPPED_NO_EMAIL',
                       error_message: null,

@@ -2,17 +2,17 @@
 -- Seed Data
 
 -- 1. Seed Staff Profiles
-INSERT INTO staff_profiles (id, name, role, email, phone, logged_in) VALUES
-  ('d1111111-1111-1111-1111-111111111111', 'Akshaya', 'Employee', 'akshaya@orbem.com', '+91-98765-43210', false),
-  ('d2222222-2222-2222-2222-222222222222', 'Rasul khan', 'Administrator', 'rasulkhan@orbem.com', '+91-99887-76655', false),
-  ('d3333333-3333-3333-3333-333333333333', 'Jason', 'Employee', 'jason@orbem.com', '+91-91234-56789', false)
-ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, phone = EXCLUDED.phone;
+INSERT INTO staff_profiles (id, name, role, email, phone, password, approved, logged_in) VALUES
+  ('d1111111-1111-1111-1111-111111111111', 'Akshaya', 'Employee', 'ammu.n2428@gmail.com', '+91-98765-43210', 'akshaya123', true, false),
+  ('d2222222-2222-2222-2222-222222222222', 'Rasul khan', 'Administrator', 'mohammedrasulkhan09@gmail.com', '+91-99887-76655', 'rasul123', true, false),
+  ('d3333333-3333-3333-3333-333333333333', 'Jason', 'Administrator', 'kolajason3@gmail.com', '+91-91234-56789', 'jason123', true, false)
+ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, phone = EXCLUDED.phone, password = EXCLUDED.password, approved = EXCLUDED.approved;
 
 -- 2. Seed Customers
 INSERT INTO customers (id, name, type, company_name, phone, email) VALUES
   ('c0000000-0000-0000-0000-000000000001', 'Lufthansa Cargo Service', 'IMPORTER', 'Lufthansa Cargo AG', '+49-69-696-0', 'kolajason3@gmail.com'),
-  ('c0000000-0000-0000-0000-000000000002', 'Apex Pharma Logistics', 'EXPORTER', 'Apex Pharmaceuticals', '+971-4-888-8888', 'kolajason3@gmail.com'),
-  ('c0000000-0000-0000-0000-000000000003', 'Global Electronics Dispatch', 'AGENT', 'Global Electronics Corp', '+31-20-500-1234', 'kolajason3@gmail.com')
+  ('c0000000-0000-0000-0000-000000000002', 'Apex Pharma Logistics', 'EXPORTER', 'Apex Pharmaceuticals', '+971-4-888-8888', 'mohammedrasulkhan09@gmail.com'),
+  ('c0000000-0000-0000-0000-000000000003', 'Global Electronics Dispatch', 'AGENT', 'Global Electronics Corp', '+31-20-500-1234', 'ammu.n2428@gmail.com')
 ON CONFLICT (id) DO NOTHING;
 
 -- 3. Seed Shipments (Note: Triggers calculate weights and init 5 documents on insert)

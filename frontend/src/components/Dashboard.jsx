@@ -104,6 +104,31 @@ export default function Dashboard({ activePortal, activeUser }) {
     }
   };
 
+  const handleApproveStaff = async (staffId) => {
+    try {
+      setError('');
+      setLoading(true);
+      const { error: approveErr } = await supabase
+        .from('staff_profiles')
+        .update({ approved: true })
+        .eq('id', staffId);
+
+      if (approveErr) throw approveErr;
+
+      // Refresh the staff list
+      const { data: staffData } = await supabase
+        .from('staff_profiles')
+        .select('*')
+        .order('name', { ascending: true });
+      setStaffList(staffData || []);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to approve staff profile.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchDashboardData();
   }, [activePortal]);
@@ -355,7 +380,7 @@ export default function Dashboard({ activePortal, activeUser }) {
             <div className="text-center py-16 text-text-muted border border-dashed border-[#222f47] rounded-xl">
               <Package size={48} className="mx-auto mb-3 opacity-30" />
               <p className="font-semibold text-sm">No shipments matched filter criteria.</p>
-              <p className="text-xs mt-1">Try resetting the filters or register a new shipment profile.</p>
+              <p className="text-xs mt-1">Reset the filters or register a new shipment profile.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -531,24 +556,39 @@ export default function Dashboard({ activePortal, activeUser }) {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {staffList.map((s) => (
-              <div key={s.id} className="bg-bg-main border border-[#222f47] p-4 rounded-xl flex items-center justify-between">
-                <div className="space-y-1 overflow-hidden pr-2">
-                  <h4 className="font-bold text-white text-xs truncate">{s.name}</h4>
-                  <p className="text-[10px] text-text-muted truncate">{s.role}</p>
-                  <p className="text-[9px] text-text-muted truncate">Mob: {s.phone || 'N/A'}</p>
+              <div key={s.id} className="bg-bg-main border border-[#222f47] p-4 rounded-xl flex flex-col justify-between gap-3">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1 overflow-hidden pr-2">
+                    <h4 className="font-bold text-white text-xs truncate">{s.name}</h4>
+                    <p className="text-[10px] text-text-muted truncate">{s.role}</p>
+                    <p className="text-[9px] text-text-muted truncate">Mob: {s.phone || 'N/A'}</p>
+                    <p className="text-[9px] text-text-muted truncate">Email: {s.email}</p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    {!s.approved ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                        Pending
+                      </span>
+                    ) : s.logged_in ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                        Online
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-text-muted border border-white/10">
+                        Offline
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-shrink-0">
-                  {s.logged_in ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                      Online
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-text-muted border border-white/10">
-                      Offline
-                    </span>
-                  )}
-                </div>
+                {!s.approved && (
+                  <button
+                    onClick={() => handleApproveStaff(s.id)}
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold py-1.5 px-3 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <CheckCircle2 size={12} /> Approve Access
+                  </button>
+                )}
               </div>
             ))}
           </div>

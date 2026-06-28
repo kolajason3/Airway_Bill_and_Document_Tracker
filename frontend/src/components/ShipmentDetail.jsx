@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ShieldAlert, ArrowLeft, CheckCircle2, AlertTriangle, FileText, Check, Clock, Upload, Trash2, Eye, ExternalLink, Send, MessageSquare, Ban, Mail } from 'lucide-react';
+import { ShieldAlert, ArrowLeft, CheckCircle2, AlertTriangle, FileText, Check, Clock, Upload, Trash2, Eye, ExternalLink, Ban, Mail } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
 export default function ShipmentDetail({ activePortal, activeUser }) {
@@ -15,12 +15,6 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
   // Reject modal state
   const [rejectingDocId, setRejectingDocId] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
-
-  const [alertTemplate, setAlertTemplate] = useState('rejection');
-  const [whatsappLogs, setWhatsappLogs] = useState([]);
-  const [customMsg, setCustomMsg] = useState('');
-  const [whatsappPhone, setWhatsappPhone] = useState('');
-  const [isMessageEdited, setIsMessageEdited] = useState(false);
 
   const isAdmin = activePortal === 'admin';
   const isAssigned = shipment 
@@ -70,17 +64,6 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
       }
 
       setShipment(data);
-      if (data && data.customer && data.customer.phone) {
-        setWhatsappPhone(data.customer.phone);
-      } else {
-        setWhatsappPhone('');
-      }
-
-      // Load WhatsApp logs from local storage
-      const localLogs = JSON.parse(localStorage.getItem('sb_whatsapp_logs') || '[]');
-      const filteredLogs = localLogs.filter(log => log.shipment_id === shipmentId);
-      setWhatsappLogs(filteredLogs);
-
     } catch (err) {
       console.error(err);
       setError('Failed to load shipment details, documents, or logs.');
@@ -90,45 +73,8 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
   };
 
   useEffect(() => {
-    setIsMessageEdited(false);
     fetchShipmentData();
   }, [shipmentId]);
-
-  // Pre-fill WhatsApp message text based on template selection
-  useEffect(() => {
-    if (!shipment || isMessageEdited) return;
-    const awbNo = shipment.awb_number;
-    const trackingLink = `${window.location.origin}/shipments/${shipmentId}`;
-    
-    if (alertTemplate === 'rejection') {
-      const rejectedDocs = shipment.shipment_documents?.filter(d => d.status === 'REJECTED') || [];
-      const reasons = rejectedDocs.map(d => `${formatDocLabel(d.document_type)}: ${d.rejection_reason || 'Re-upload needed'}`).join('; ');
-      
-      setCustomMsg(
-        `Hello! This is ORBEM Solutions. ALERT: Your shipment under AWB ${awbNo} was REJECTED / placed ON_HOLD at our warehouse intake. Cause: ${reasons || 'Required documents failed compliance checks'}. Please resolve this compliance issue at: ${trackingLink}`
-      );
-    } else if (alertTemplate === 'verify_docs') {
-      setCustomMsg(
-        `Hello! This is ORBEM Solutions. We have received your cargo under AWB ${awbNo}. Status: PENDING_DOCUMENTS. We are verifying your uploaded paperwork for next steps. Please ensure all compliance checksheets are uploaded.`
-      );
-    } else if (alertTemplate === 'handover_ready') {
-      setCustomMsg(
-        `Hello! This is ORBEM Solutions. Good news: AWB ${awbNo} has been APPROVED and cleared for next steps. Your cargo is ready for dispatch and transport to the airport terminal.`
-      );
-    } else if (alertTemplate === 'payment_pending') {
-      setCustomMsg(
-        `Hello! This is ORBEM Solutions. We have received AWB ${awbNo} at intake, but payment is currently UNPAID. Please complete payment and upload documents to authorize terminal routing.`
-      );
-    } else if (alertTemplate === 'completed') {
-      setCustomMsg(
-        `Hello! This is ORBEM Solutions. Your cargo under AWB ${awbNo} has been successfully loaded on flights and marked COMPLETED.`
-      );
-    } else {
-      setCustomMsg(
-        `Hello! This is ORBEM Solutions. Operations update for AWB: ${awbNo}. Current status: "${shipment.status}". View status: ${trackingLink}`
-      );
-    }
-  }, [shipment, alertTemplate]);
 
   const handleFileUpload = async (docId, file, docType) => {
     if (!canModify) {
@@ -356,34 +302,7 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
     }
   };
 
-  const handleDispatchWhatsApp = () => {
-    if (!whatsappPhone.trim()) {
-      alert('Please enter a recipient phone number.');
-      return;
-    }
 
-    const phone = whatsappPhone.replace(/[^0-9]/g, '');
-    const text = encodeURIComponent(customMsg);
-    const waUrl = `https://wa.me/${phone}?text=${text}`;
-
-    // Log the WhatsApp dispatch locally in localStorage
-    const localLogs = JSON.parse(localStorage.getItem('sb_whatsapp_logs') || '[]');
-    const newLog = {
-      id: `wa-log-${Date.now()}`,
-      shipment_id: shipmentId,
-      customer_name: shipment?.customer?.company_name || 'Walk-in Exporter',
-      recipient_phone: whatsappPhone,
-      template_used: alertTemplate,
-      message_content: customMsg,
-      timestamp: new Date().toISOString()
-    };
-    localLogs.unshift(newLog);
-    localStorage.setItem('sb_whatsapp_logs', JSON.stringify(localLogs));
-    setWhatsappLogs(prev => [newLog, ...prev]);
-
-    // Open WhatsApp Web
-    window.open(waUrl, '_blank');
-  };
 
   const formatDocLabel = (type) => {
     switch (type) {
@@ -588,73 +507,7 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
             </div>
           </div>
 
-          {/* WhatsApp Alerts Panel */}
-          {activePortal !== 'exporter' && (
-            <div className="bg-bg-card border border-[#222f47] rounded-2xl p-6 space-y-4">
-              <h2 className="text-xs font-header font-bold text-text-muted flex items-center gap-2 border-b border-[#222f47] pb-3 uppercase tracking-wider">
-                <MessageSquare className="text-accent-blue" size={15} /> WhatsApp Alerts Dispatcher
-              </h2>
 
-              <div className="space-y-3.5 text-xs">
-                <div className="space-y-1">
-                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Customer Company</span>
-                  <p className="text-white font-semibold">{shipment.customer?.company_name || 'Walk-in Exporter'}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Recipient Phone Number *</label>
-                  <input 
-                    type="text"
-                    placeholder="e.g. +91 98765 43210"
-                    value={whatsappPhone}
-                    onChange={(e) => setWhatsappPhone(e.target.value)}
-                    className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-3 py-2 text-white outline-none focus:border-accent-blue"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Message Template</span>
-                  <select
-                    value={alertTemplate}
-                    onChange={(e) => {
-                      setAlertTemplate(e.target.value);
-                      setIsMessageEdited(false);
-                    }}
-                    className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-3 py-2 text-white outline-none focus:border-accent-blue"
-                  >
-                    <option value="rejection">Warehouse / Intake Rejection Notice</option>
-                    <option value="verify_docs">Verify Documents Pending Alert</option>
-                    <option value="handover_ready">Approved & Handover (Send to Airport)</option>
-                    <option value="payment_pending">Intake Payment Pending Alert</option>
-                    <option value="completed">Shipment Completed Notification</option>
-                    <option value="general">General Operations Update</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Message Body Preview</span>
-                  <textarea
-                    value={customMsg}
-                    onChange={(e) => {
-                      setCustomMsg(e.target.value);
-                      setIsMessageEdited(true);
-                    }}
-                    rows={4}
-                    className="w-full bg-[#0b0f19] border border-[#222f47] rounded-xl px-3.5 py-2.5 text-white placeholder-text-muted outline-none focus:border-accent-blue resize-none"
-                  ></textarea>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleDispatchWhatsApp}
-                  disabled={!whatsappPhone.trim()}
-                  className="w-full bg-[#25d366] hover:bg-[#20ba5a] text-black font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
-                >
-                  <Send size={14} /> Send WhatsApp Alert
-                </button>
-              </div>
-            </div>
-          )}
 
         </div>
 
@@ -824,26 +677,7 @@ export default function ShipmentDetail({ activePortal, activeUser }) {
             </div>
           </div>
 
-          {/* Outbound Alerts Notification Logs (WhatsApp log dashboard) */}
-          {whatsappLogs.length > 0 && (
-            <div className="bg-bg-card border border-[#222f47] rounded-2xl p-6">
-              <h2 className="text-xs font-header font-bold text-text-muted flex items-center gap-2 mb-4 border-b border-[#222f47] pb-3 uppercase tracking-wider">
-                <Send className="text-emerald-400" size={14} /> WhatsApp Dispatch Trail
-              </h2>
-              <div className="space-y-3 max-h-[180px] overflow-y-auto pr-1">
-                {whatsappLogs.map((log) => (
-                  <div key={log.id} className="bg-[#0b0f19] border border-[#222f47] p-3 rounded-xl text-xs space-y-1.5 animate-fade-in">
-                    <div className="flex justify-between items-center text-[8px] font-bold text-text-muted uppercase tracking-wider">
-                      <span>Template: {log.template_used}</span>
-                      <span>{new Date(log.timestamp).toLocaleString()}</span>
-                    </div>
-                    <p className="text-text-muted leading-tight font-serif italic text-[11px]">"{log.message_content}"</p>
-                    <p className="text-[9px] text-text-muted">Recipient: <strong className="text-white font-medium">{log.customer_name} ({log.recipient_phone})</strong></p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+
 
           {/* Email Notifications Panel */}
           <div className="bg-bg-card border border-[#222f47] rounded-2xl p-6">
